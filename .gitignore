@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Environment variables & API Keys
+.env
+.env.local
+.env.*.local
+*.env
+secrets.yaml
+secrets.json
+api_keys.txt
+
+# Model files (large, can be regenerated)
+models/neuralprophet/*.pkl
+models/*.pkl
+*.pkl
+*.h5
+*.onnx
+*.pt
+*.pth
+
+# Training logs
+lightning_logs/
+logs/
+*.log
+
+# Large data files (keep structure, exclude large CSVs)
+data/raw/*.csv
+data/raw/kaggle_real/
+data/processed/*.csv
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Model files (exclude all - can be regenerated)
+models/neuralprophet/*.pkl
+models/neuralprophet/*.json
+models/neuralprophet/*.csv
+models/*.pkl
+models/*.csv
+*.pkl
+*.h5
+*.onnx
+*.pt
+*.pth
+!models/neuralprophet/.gitkeep
+dist/
+build/
+*.egg-info/
