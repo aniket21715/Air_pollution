@@ -1,0 +1,148 @@
+{
+  "0b02638bfdfd3d5d796826ad7b96d118": {
+    "timestamp": "2026-01-11T21:06:49.798604",
+    "data": {
+      "search_date": "2026-01-11",
+      "region": "Delhi",
+      "timeframe": "2 years",
+      "policies": [
+        {
+          "name": "Delhi Winter Action Plan 2024",
+          "date": "September 2024",
+          "authority": "Delhi Government (Environment Department)",
+          "description": "A comprehensive 21-point plan to combat air pollution during the winter months of 2024-2025, addressing various sources of pollution.",
+          "key_provisions": [
+            "Deployment of 360 teams for Pollution Under Control (PUC) certificates and overage vehicle monitoring.",
+            "Traffic police deployment on 134 roads to reduce congestion.",
+            "Anti-dust campaign from October 7, 2024.",
+            "Complete ban on firecracker production, storage, use, and sale.",
+            "Bio-decomposer spraying over 5,000 acres of farmland to combat stubble burning.",
+            "Deployment of 59 teams to inspect industrial areas and 588 teams to prevent open burning."
+          ],
+          "expected_impact": "Aims to address various pollution sources including open waste burning, industrial emissions, and vehicular pollution, expecting a reduction in PM2.5 concentrations.",
+          "affected_regions": [
+            "Delhi"
+          ],
+          "status": "completed",
+          "category": "general"
+        },
+        {
+          "name": "Delhi Winter Action Plan 2025-26 / Air Pollution Mitigation Plan 2025",
+          "date": "June 2025 (Mitigation Plan launch), October 2025 (Winter Action Plan rolled out)",
+          "authority": "Delhi Government (Chief Minister Rekha Gupta, Environment Minister Manjinder Singh Sirsa)",
+          "description": "An extensive 25-point (or 18-point) plan combining innovative measures and stricter regulations across seven thematic areas to tackle the seasonal surge in air pollution.",
+          "key_provisions": [
+            "100% PUSA decomposer coverage to suppress stubble burning.",
+            "Pilot cloud seeding initiative in collaboration with IIT Kanpur and IMD.",
+            "Deployment of 86 mechanised road sweepers, 300 sprinklers, and 362 anti-smog guns.",
+            "Mandatory anti-smog guns for construction projects exceeding 3,000 sqm and multi-storey offices above G+5.",
+            "Strict 14-point dust norms for construction projects larger than 500 sqm.",
+            "Intensified vehicular checks (PUC, idling, visible smoke) by 578 teams.",
+            "All industries in Delhi transitioned to PNG fuel with joint inspections.",
+            "Stricter vehicle regulations: only BS-VI compliant, CNG, or electric commercial vehicles from outside Delhi allowed entry from November 1, 2025.",
+            "End-of-life vehicles barred from Delhi's roads from July 2025."
+          ],
+          "expected_impact": "Aims to significantly reduce pollution, with the government claiming positive and measurable improvement in air quality in 2025 compared to 2024, leading to more 'Satisfactory' AQI days and fewer 'Severe' days.",
+          "affected_regions": [
+            "Delhi"
+          ],
+          "status": "ongoing",
+          "category": "general"
+        },
+        {
+          "name": "Revised Graded Response Action Plan (GRAP) Schedule",
+          "date": "November 21, 2025",
+          "authority": "Commission for Air Quality Management (CAQM)",
+          "description": "A revision to the GRAP framework, making it more stringent by advancing the implementation of certain restrictions to earlier stages of air quality deterioration.",
+          "key_provisions": [
+            "Measures previously under GRAP Stage II moved to Stage I (AQI 201-300).",
+            "Measures previously under GRAP Stage III moved to Stage II (AQI 301-400).",
+            "Measures previously under GRAP Stage IV moved to Stage III (AQI 401-450).",
+            "Staggered timings for public offices and municipal bodies may be enforced in Stage II (previously Stage III).",
+            "Uninterrupted power supply to discourage DG sets in Stage I (previously Stage II)."
+          ],
+          "expected_impact": "Aims to prevent unchecked spikes in air pollution and respond faster to deteriorating air quality by enforcing stricter measures at earlier stages, thereby improving overall air quality.",
+          "affected_regions": [
+            "Delhi-NCR"
+          ],
+          "status": "active",
+          "category": "emergency"
+        },
+        {
+          "name": "Invocation of GRAP Stage III (Severe Air Quality)",
+          "date": "November 12, 2025",
+          "authority": "Commission for Air Quality Management (CAQM)",
+          "description": "Implementation of emergency measures under GRAP Stage III due to air quality worsening to 'severe' levels.",
+          "key_provisions": [
+            "Prohibition on non-essential construction and demolition activities across Delhi-NCR.",
+            "Ban on plying of BS-III petrol and BS-IV diesel four-wheelers in Delhi, Gurugram, Faridabad, Ghaziabad, and Gautam Budh Nagar.",
+            "Mandatory hybrid learning for classes up to Grade 5."
+          ],
+          "expected_impact": "Aimed to curb rising air pollution when AQI reached 'severe' category (401-450) by restricting major contributing activities.",
+          "affected_regions": [
+            "Delhi-NCR (Delhi, Gurugram, Faridabad, Ghaziabad, Gautam Budh Nagar)"
+          ],
+          "status": "completed (revoked January 5, 2026)",
+          "category": "emergency"
+        },
+        {
+          "name": "Invocation of GRAP Stage IV (Severe Plus Air Quality)",
+          "date": "December 13, 2025",
+          "authority": "Commission for Air Quality Management (CAQM)",
+          "description": "Implementation of the most stringent emergency measures under GRAP Stage IV due to air quality reaching 'severe plus' levels.",
+          "key_provisions": [
+            "Complete ban on all construction and demolition activities, including linear public projects.",
+            "Stop entry of truck traffic into Delhi (except for essential commodities/services).",
+            "Ban on diesel-operated BS-IV and below Heavy Goods Vehicles (HGVs) in Delhi (except for essential commodities/services).",
+            "Restrictions on non-essential diesel vehicles and non-essential heavy transport.",
+            "Ban on open burning and diesel generators (except for emergencies).",
+            "Mandatory shifting of school classes (VI to IX and XI) to hybrid mode.",
+            "Staggered timings for public offices and municipal bodies in Delhi-NCR."
+          ],
+          "expected_impact": "Aimed to impose the strictest measures to prevent further deterioration of air quality when AQI crosses 450 ('Severe Plus').",
+          "affected_regions": [
+            "Delhi-NCR"
+          ],
+          "status": "completed",
+          "category": "emergency"
+        },
+        {
+          "name": "NGT Notice on Persistent Air Pollution and Thermal Power Plant Emissions",
+          "date": "November 27, 2024",
+          "authority": "National Green Tribunal (NGT)",
+          "description": "NGT took suo motu cognizance of a study highlighting significant emissions from thermal power plants in the region and sought responses from the Central government.",
+          "key_provisions": [
+            "Sought response from the Centre on the persistent air pollution crisis.",
+            "Noted that thermal power plants emit significantly more SO2 than stubble burning.",
+            "Indicated violations of the Air (Prevention and Control of Pollution) Act and the Environment Protection Act."
+          ],
+          "expected_impact": "Aims to prompt action against significant industrial emission sources, specifically thermal power plants, to reduce SO2 and other pollutants in the NCR.",
+          "affected_regions": [
+            "Delhi-NCR"
+          ],
+          "status": "ongoing",
+          "category": "industrial/general"
+        },
+        {
+          "name": "Delhi Government Stricter Anti-Pollution Measures (December 2025)",
+          "date": "December 18, 2025",
+          "authority": "Delhi Government (CM Rekha Gupta, Environment Minister Manjinder Singh Sirsa)",
+          "description": "Additional stringent anti-pollution measures introduced by the Delhi government beyond the GRAP-4 framework to curb severe air pollution.",
+          "key_provisions": [
+            "Work from home for 50% of staff in all government and private offices.",
+            "Implementation of 'No PUC - No Fuel' policy, restricting fuel to vehicles without valid Pollution Under Control certificates.",
+            "Ban on diesel vehicles older than 10 years and petrol vehicles older than 15 years that do not meet BS-IV emission standards.",
+            "Ban on trucks and other vehicles carrying construction materials from other states into Delhi, with an appeal for BS-6 compliant vehicles."
+          ],
+          "expected_impact": "Expected to significantly curb vehicular emissions and construction dust, aiming to reduce overall air pollution during severe episodes.",
+          "affected_regions": [
+            "Delhi"
+          ],
+          "status": "active (during severe pollution episodes)",
+          "category": "vehicular/construction/general"
+        }
+      ],
+      "summary": "The policy landscape in Delhi over the last two years has been characterized by a multi-pronged approach involving comprehensive seasonal action plans, dynamic updates to the Graded Response Action Plan (GRAP) to impose stricter emergency measures, and targeted initiatives by the Delhi government to control vehicular, industrial, and construction-related emissions. While significant efforts are being made by both state and central authorities, including judicial interventions, the city continues to face challenges, particularly during winter, necessitating ongoing stringent enforcement and adaptive policy adjustments."
+    }
+  }
+}

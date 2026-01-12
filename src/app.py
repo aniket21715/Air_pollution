@@ -19,6 +19,12 @@ from plotly.subplots import make_subplots
 import os
 from datetime import datetime, timedelta
 import torch
+import warnings
+warnings.filterwarnings("ignore", message=".*Examining the path of torch.classes.*")
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Import custom modules
 from indian_cities_config import (
@@ -29,7 +35,7 @@ from health_advisor import HealthAdvisor
 from policy_impact_analyzer import PolicyImpactAnalyzer
 
 # Try to import real-time AQI clients (OpenWeatherMap primary, Open-Meteo fallback)
-OPENWEATHERMAP_API_KEY = "7fd3d6c76a563b00cb481d3319ab4a93"  # User's API key
+OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")
 
 try:
     from openweathermap_client import OpenWeatherMapAQIClient
@@ -70,7 +76,25 @@ st.markdown("""
         border-left: 5px solid;
         border-radius: 8px;
         margin: 15px 0;
-        background: white;
+        background-color: #1e293b;
+        color: #e2e8f0;
+    }
+    .health-alert h3 {
+        color: #f1f5f9;
+        margin-bottom: 10px;
+    }
+    .health-alert p {
+        color: #cbd5e1;
+    }
+    .health-alert ul {
+        color: #e2e8f0;
+    }
+    .health-alert li {
+        color: #f1f5f9;
+        margin: 5px 0;
+    }
+    .health-alert strong {
+        color: #60a5fa;
     }
     .city-stat {
         background: white;
@@ -78,6 +102,25 @@ st.markdown("""
         border-radius: 10px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         margin: 10px 0;
+    }
+    /* Light mode override */
+    @media (prefers-color-scheme: light) {
+        .health-alert {
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        .health-alert h3 {
+            color: #0f172a;
+        }
+        .health-alert p {
+            color: #334155;
+        }
+        .health-alert ul, .health-alert li {
+            color: #1e293b;
+        }
+        .health-alert strong {
+            color: #2563eb;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -280,10 +323,18 @@ def main():
         
         # Planned Activity
         st.subheader("📅 Planned Activity")
-        planned_activity = st.selectbox(
+        activity_options = ["jog", "cycling", "outdoor_event", "commute", "children_play", "window_open", "Other (Custom)"]
+        selected_activity = st.selectbox(
             "What are you planning?",
-            ["jog", "cycling", "outdoor_event", "commute", "children_play", "window_open"]
+            activity_options
         )
+        
+        if selected_activity == "Other (Custom)":
+            planned_activity = st.text_input("✍️ Enter your specific activity:", placeholder="e.g., yoga in park, painting fence, marathon training")
+            if not planned_activity:
+                planned_activity = "general_outdoor_activity" # Default fallback
+        else:
+            planned_activity = selected_activity
         
         st.markdown("---")
         st.caption("💡 **Purpose**: This tool helps you make informed health decisions based on air quality forecasts.")
@@ -357,6 +408,81 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
+    # Dynamic Activity Suggestions (Gemini-powered)
+    st.markdown("### 🎯 Smart Activity Suggestions")
+    st.caption("*AI-powered recommendations based on current air quality*")
+    
+    try:
+        from gemini_advisor import GeminiHealthAdvisor
+        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+        
+        # Cache the suggestions in session state to avoid repeated API calls
+        cache_key = f"suggestions_{selected_city}_{int(current_aqi)}_{user_profile}"
+        
+        if cache_key not in st.session_state or st.button("🔄 Refresh Suggestions", key="refresh_suggestions"):
+            with st.spinner("Getting AI suggestions..."):
+                advisor = GeminiHealthAdvisor(GEMINI_API_KEY)
+                st.session_state[cache_key] = advisor.get_dynamic_activity_suggestions(
+                    city=selected_city,
+                    aqi=current_aqi,
+                    category=category,
+                    user_profile=user_profile
+                )
+        
+        suggestions_data = st.session_state[cache_key]
+        
+        # Display activity cards in a grid
+        cols = st.columns(4)
+        safety_colors = {"safe": "#22c55e", "caution": "#f59e0b", "avoid": "#ef4444"}
+        
+        for i, sugg in enumerate(suggestions_data.get("suggestions", [])[:4]):
+            with cols[i]:
+                safety = sugg.get("safety", "caution")
+                color = safety_colors.get(safety, "#888888")
+                st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+                    padding: 15px;
+                    border-radius: 12px;
+                    border-left: 4px solid {color};
+                    min-height: 120px;
+                    margin-bottom: 10px;
+                ">
+                    <div style="font-size: 28px; text-align: center;">{sugg.get('icon', '🎯')}</div>
+                    <div style="font-weight: bold; color: white; text-align: center; margin: 8px 0;">
+                        {sugg.get('activity', 'Activity')}
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; text-align: center;">
+                        {sugg.get('tip', '')}
+                    </div>
+                    <div style="
+                        background: {color}20;
+                        color: {color};
+                        font-size: 10px;
+                        padding: 2px 8px;
+                        border-radius: 10px;
+                        text-align: center;
+                        margin-top: 8px;
+                        text-transform: uppercase;
+                    ">{safety}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Best time and general tip
+        col_time, col_tip = st.columns(2)
+        with col_time:
+            st.info(f"⏰ **Best Time:** {suggestions_data.get('best_time', 'Check forecast')}")
+        with col_tip:
+            st.success(f"💡 **Today's Tip:** {suggestions_data.get('general_tip', 'Stay healthy!')}")
+            
+    except Exception as e:
+        # Fallback to static suggestions if Gemini fails
+        st.warning("AI suggestions unavailable. Showing default recommendations.")
+        if current_aqi > 200:
+            st.info("🏠 **Recommendation:** Stay indoors and use air purifiers. Wear N95 mask if going outside.")
+        else:
+            st.info("🌤️ **Recommendation:** Outdoor activities safe with normal precautions.")
+    
     st.markdown("---")
     
     # Tabs for different analysis
@@ -364,7 +490,7 @@ def main():
         "📈 7-Day Forecast",
         "📊 Historical Trends",
         "🏛️ Policy Impact",
-        "💰 Health Costs",
+        "🛡️ Insurance & Health Planning",
         "🗺️ City Comparison",
         "🤖 AI Health Advisor"
     ])
@@ -415,7 +541,7 @@ def main():
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Activity guidance
+        # Enhanced Activity Guidance Section
         st.markdown(f"### 🏃 Activity Guidance: *{planned_activity.replace('_', ' ').title()}*")
         activity_guidance = HealthAdvisor.get_activity_guidance(
             forecast_data['aqi'],
@@ -423,9 +549,118 @@ def main():
             user_profile
         )
         
-        st.info(f"**{activity_guidance['recommendation']}**")
-        st.write(f"- **AQI Range**: {activity_guidance['min_aqi']:.0f} - {activity_guidance['max_aqi']:.0f}")
-        st.write(f"- **Average AQI**: {activity_guidance['avg_aqi']:.1f}")
+        # Status-based styling
+        status_styles = {
+            "safe": {"color": "#22c55e", "bg": "#22c55e20", "icon": "✅"},
+            "caution": {"color": "#f59e0b", "bg": "#f59e0b20", "icon": "⚠️"},
+            "risky": {"color": "#f97316", "bg": "#f9731620", "icon": "⚠️"},
+            "dangerous": {"color": "#ef4444", "bg": "#ef444420", "icon": "❌"}
+        }
+        status = activity_guidance.get('status', 'caution')
+        style = status_styles.get(status, status_styles['caution'])
+        
+        # Main recommendation card
+        st.markdown(f"""
+        <div style="
+            background: {style['bg']};
+            border-left: 4px solid {style['color']};
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        ">
+            <div style="font-size: 18px; font-weight: bold; color: {style['color']};">
+                {style['icon']} {activity_guidance['recommendation']}
+            </div>
+            <div style="margin-top: 10px; display: flex; gap: 20px; flex-wrap: wrap;">
+                <span>📊 <strong>AQI Range:</strong> {activity_guidance['min_aqi']:.0f} - {activity_guidance['max_aqi']:.0f}</span>
+                <span>📈 <strong>Average:</strong> {activity_guidance['avg_aqi']:.1f}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Dynamic Gemini-powered guidance
+        try:
+            from gemini_advisor import GeminiHealthAdvisor
+            GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+            
+            guidance_cache_key = f"activity_guidance_{selected_city}_{planned_activity}_{user_profile}_{int(activity_guidance['avg_aqi'])}"
+            
+            if guidance_cache_key not in st.session_state:
+                with st.spinner("Getting AI recommendations..."):
+                    advisor = GeminiHealthAdvisor(GEMINI_API_KEY)
+                    
+                    prompt = f"""You are an air quality health advisor. Generate activity guidance for:
+City: {selected_city}
+Activity: {planned_activity.replace('_', ' ')}
+User Profile: {user_profile}
+7-Day AQI Forecast: Min {activity_guidance['min_aqi']:.0f}, Max {activity_guidance['max_aqi']:.0f}, Avg {activity_guidance['avg_aqi']:.0f}
+Status: {status}
+
+Provide response in this exact JSON format (no markdown):
+{{
+  "best_timing": "Best time of day for this activity",
+  "duration_advice": "How long they can safely do this activity",
+  "alternatives": ["Alternative 1", "Alternative 2", "Alternative 3"],
+  "safety_tips": ["Tip 1", "Tip 2"],
+  "forecast_insight": "Brief insight about the 7-day trend"
+}}
+Be specific to Indian context. Keep all values concise (under 50 chars each)."""
+
+                    response = advisor.model.generate_content(prompt)
+                    import json
+                    text = response.text.strip()
+                    if text.startswith("```"):
+                        text = text.split("```")[1]
+                        if text.startswith("json"):
+                            text = text[4:]
+                    st.session_state[guidance_cache_key] = json.loads(text.strip())
+            
+            guidance_data = st.session_state[guidance_cache_key]
+            
+            # Display enhanced guidance in columns
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### ⏰ Timing & Duration")
+                st.markdown(f"""
+                <div style="background: #1e293b; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+                    <div style="color: #94a3b8; font-size: 12px;">Best Time</div>
+                    <div style="color: white; font-weight: bold;">{guidance_data.get('best_timing', 'Early morning')}</div>
+                </div>
+                <div style="background: #1e293b; padding: 12px; border-radius: 8px;">
+                    <div style="color: #94a3b8; font-size: 12px;">Duration Advice</div>
+                    <div style="color: white; font-weight: bold;">{guidance_data.get('duration_advice', 'Limit outdoor time')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.markdown("#### 📈 7-Day Forecast Insight")
+                st.info(guidance_data.get('forecast_insight', 'AQI levels remain elevated throughout the week.'))
+            
+            with col2:
+                st.markdown("#### 🔄 Better Alternatives")
+                for alt in guidance_data.get('alternatives', ['Indoor gym', 'Home workout', 'Yoga'])[:3]:
+                    st.markdown(f"""
+                    <div style="background: #16a34a20; padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid #16a34a;">
+                        <span style="color: white;">✓ {alt}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown("#### 🛡️ Safety Tips")
+                for tip in guidance_data.get('safety_tips', ['Wear N95 mask', 'Stay hydrated'])[:2]:
+                    st.markdown(f"• {tip}")
+                    
+        except Exception as e:
+            # Fallback guidance
+            st.markdown("#### 💡 Quick Tips")
+            if status == "dangerous":
+                st.error("🏠 **Strongly advised to stay indoors.** If you must go outside, wear an N95 mask and limit exposure to under 15 minutes.")
+                st.markdown("**Alternatives:** Indoor gym, home yoga, treadmill running")
+            elif status == "risky":
+                st.warning("⚠️ **Consider postponing or switching to indoor alternatives.** If proceeding, choose early morning (6-7 AM) when pollution is typically lower.")
+                st.markdown("**Alternatives:** Indoor cycling, swimming, gym workout")
+            else:
+                st.success("✅ **Conditions are acceptable.** Monitor how you feel and reduce intensity if you experience any discomfort.")
+                st.markdown("**Best time:** Early morning or late evening")
     
     with tab2:
         st.subheader("Historical Pollution Trends")
@@ -588,96 +823,289 @@ def main():
             ❌ **No improvement.** Despite emergency measures, pollution hasn't decreased.
             This suggests the problem needs systemic solutions, not just temporary bans.
             """)
+        
+        # ===== RECENT POLICIES SECTION (2024-2026) - AI-Powered Web Search =====
+        st.markdown("---")
+        st.markdown("### 📰 Recent Policies (2024-2026)")
+        st.markdown("*Live updates from government sources, CPCB, and NGT orders*")
+        
+        try:
+            from agents.researcher import PolicyResearcherAgent
+            GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+            
+            if GEMINI_API_KEY:
+                # Cache key for session
+                policy_cache_key = f"recent_policies_{selected_city}"
+                
+                if st.button("🔍 Fetch Recent Policies", type="primary", key="fetch_policies"):
+                    with st.spinner("🌐 Searching for recent policies..."):
+                        researcher = PolicyResearcherAgent(GEMINI_API_KEY)
+                        result = researcher.research_recent_policies(
+                            city=selected_city, 
+                            timeframe="2 years"
+                        )
+                        st.session_state[policy_cache_key] = result
+                
+                # Display cached or fetched policies
+                if policy_cache_key in st.session_state:
+                    policy_data = st.session_state[policy_cache_key]
+                    
+                    if "error" in policy_data and policy_data.get("policies") == []:
+                        st.error(f"⚠️ Could not fetch policies: {policy_data.get('error')}")
+                    else:
+                        policies = policy_data.get("policies", [])
+                        
+                        if policies:
+                            st.success(f"📋 Found **{len(policies)}** recent policies")
+                            
+                            for i, policy in enumerate(policies[:6]):  # Show max 6
+                                with st.expander(f"📌 {policy.get('name', 'Policy')}", expanded=i==0):
+                                    col1, col2 = st.columns([2, 1])
+                                    with col1:
+                                        st.markdown(f"**Description:** {policy.get('description', 'N/A')}")
+                                        
+                                        provisions = policy.get('key_provisions', [])
+                                        if provisions:
+                                            st.markdown("**Key Provisions:**")
+                                            for p in provisions[:3]:
+                                                st.markdown(f"- {p}")
+                                    
+                                    with col2:
+                                        st.markdown(f"📅 **Date:** {policy.get('date', 'N/A')}")
+                                        st.markdown(f"🏛️ **Authority:** {policy.get('authority', 'N/A')}")
+                                        st.markdown(f"📊 **Impact:** {policy.get('expected_impact', 'N/A')}")
+                                        
+                                        status = policy.get('status', 'unknown')
+                                        status_color = {"active": "🟢", "ongoing": "🟡", "completed": "🔵"}.get(status, "⚪")
+                                        st.markdown(f"{status_color} **Status:** {status.title()}")
+                            
+                            # Summary
+                            summary = policy_data.get("summary", "")
+                            if summary:
+                                st.info(f"📝 **Summary:** {summary}")
+                        else:
+                            st.info("No recent policies found. Try clicking 'Fetch Recent Policies'.")
+                else:
+                    st.info("👆 Click the button above to search for recent policies from 2024-2026")
+            else:
+                st.warning("⚠️ Gemini API key not configured. Add GEMINI_API_KEY to .env file.")
+                
+        except ImportError:
+            st.warning("Policy research agent not available.")
+        except Exception as e:
+            st.error(f"Error fetching policies: {str(e)}")
     
     with tab4:
-        st.subheader("💰 What Bad Air Costs You")
-        st.markdown(f"*The hidden price of pollution in **{selected_city}** (2024)*")
+        st.subheader("🛡️ Insurance & Health Planning")
+        st.markdown(f"*Plan your healthcare based on **{selected_city}'s** air quality*")
         
-        analyzer = PolicyImpactAnalyzer()
-        health_costs = analyzer.calculate_health_cost_impact(selected_city, 2024)
+        # Get current AQI for calculations
+        current_aqi = realtime_data.get('aqi', 150) if realtime_data else 150
         
-        if health_costs:
-            total_unhealthy = health_costs['days_poor'] + health_costs['days_very_poor'] + health_costs['days_severe']
-            total_days = 365
-            unhealthy_pct = (total_unhealthy / total_days) * 100
+        # User profile inputs
+        st.markdown("---")
+        st.markdown("### 👤 Your Profile")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            user_age = st.number_input("Your Age", min_value=1, max_value=100, value=30, key="insurance_age")
+        with col2:
+            family_size = st.number_input("Family Size", min_value=1, max_value=10, value=4, key="family_size")
+        with col3:
+            conditions = st.multiselect(
+                "Pre-existing Conditions",
+                ["Asthma", "COPD", "Heart Disease", "Diabetes", "Allergies", "None"],
+                default=["None"],
+                key="conditions"
+            )
+        
+        if "None" in conditions:
+            conditions = []
+        
+        # Section 1: Pollution Health Risk Score
+        st.markdown("---")
+        st.markdown("### 📊 Your Pollution Health Risk Score")
+        
+        try:
+            from agents.insurance_advisor import InsurancePlannerAgent
+            GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
             
-            # Visual summary
-            st.markdown("---")
-            st.markdown("### 📅 Days You Breathed Unhealthy Air in 2024")
-            
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("🟡 Poor Days", f"{health_costs['days_poor']}", 
-                       help="AQI 201-300: Sensitive groups should avoid outdoor exercise")
-            col2.metric("🟠 Very Poor Days", f"{health_costs['days_very_poor']}",
-                       help="AQI 301-400: Everyone should limit outdoor activity")
-            col3.metric("🔴 Severe Days", f"{health_costs['days_severe']}",
-                       help="AQI 401+: Health emergency - stay indoors!")
-            col4.metric("📊 Total Unhealthy", f"{total_unhealthy} days",
-                       f"{unhealthy_pct:.0f}% of year")
-            
-            # Personal cost breakdown
-            st.markdown("---")
-            st.markdown("### 💳 What It Costs YOU (Per Person Per Year)")
-            
-            per_capita = health_costs['per_capita_cost']
-            
-            # Break down the costs into relatable categories
-            doctor_cost = per_capita * 0.45  # 45% on doctor visits
-            medicine_cost = per_capita * 0.35  # 35% on medicines
-            productivity_cost = per_capita * 0.20  # 20% on lost work
-            
-            st.markdown(f"""
-            | Category | Estimated Cost | What It Means |
-            |----------|----------------|---------------|
-            | 🏥 Doctor Visits | ₹{doctor_cost:.0f}/year | Extra visits for cough, breathing issues, allergies |
-            | 💊 Medicines | ₹{medicine_cost:.0f}/year | Inhalers, antihistamines, cough syrups |
-            | 📉 Sick Days | ₹{productivity_cost:.0f}/year | Lost wages when too sick to work |
-            | **TOTAL** | **₹{per_capita:.0f}/year** | *That's ₹{per_capita/12:.0f} every month* |
-            """)
-            
-            # City-wide cost
-            st.markdown("---")
-            st.markdown(f"### 🏙️ What It Costs {selected_city} (Total)")
-            
-            population_cr = health_costs['population'] / 10000000
-            total_cost_cr = health_costs['estimated_health_cost_crores']
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("City Population", f"{population_cr:.1f} Crore people")
-            with col2:
-                st.error(f"### ₹{total_cost_cr:.0f} Crores/year")
-            
-            # Make it relatable
-            hospitals = total_cost_cr / 20  # Assume ₹20 Cr per hospital
-            schools = total_cost_cr / 5  # Assume ₹5 Cr per school
-            
-            st.info(f"""
-            **To put ₹{total_cost_cr:.0f} Crores in perspective:**
-            - 🏥 Could build **{hospitals:.0f} new hospitals**
-            - 🏫 Could build **{schools:.0f} new schools**  
-            - 🚌 Could buy **{total_cost_cr*10:.0f} electric buses**
-            
-            *This money is being spent on TREATING pollution-related illness instead of PREVENTING it.*
-            """)
-            
-            # What could be saved
-            st.markdown("---")
-            st.markdown("### 💡 What If Air Was Better?")
-            
-            # Compare with a cleaner city (assume Bengaluru has 40% lower costs)
-            savings_if_better = total_cost_cr * 0.40  # 40% savings estimate
-            
-            st.success(f"""
-            If {selected_city} reduced pollution to Bengaluru's level:
-            - 💰 **₹{savings_if_better:.0f} Crores saved** annually
-            - 🏥 **{savings_if_better * 10000000 / health_costs['population']:.0f}** fewer rupees per person
-            - 😷 **{total_unhealthy * 0.4:.0f} fewer unhealthy days** per year
-            
-            *Cleaner air = More money in your pocket, fewer hospital visits, longer life!*
-            """)
-        else:
-            st.warning(f"No health cost data available for {selected_city}")
+            if GEMINI_API_KEY:
+                insurance_agent = InsurancePlannerAgent(GEMINI_API_KEY)
+                
+                # Calculate risk
+                risk = insurance_agent.get_pollution_health_risk(
+                    selected_city, current_aqi, user_age, 
+                    [c.lower() for c in conditions]
+                )
+                
+                risk_score = risk['risk_score']
+                risk_color = "#22c55e" if risk_score < 30 else "#eab308" if risk_score < 50 else "#f97316" if risk_score < 75 else "#ef4444"
+                
+                col1, col2 = st.columns([1, 2])
+                with col1:
+                    st.markdown(f"""
+                    <div style="
+                        background: linear-gradient(135deg, {risk_color}22 0%, {risk_color}44 100%);
+                        border: 3px solid {risk_color};
+                        border-radius: 15px;
+                        padding: 30px;
+                        text-align: center;
+                    ">
+                        <div style="font-size: 48px; font-weight: bold; color: {risk_color};">{risk_score}</div>
+                        <div style="font-size: 16px; color: #64748b;">out of 100</div>
+                        <div style="font-size: 20px; font-weight: bold; margin-top: 10px; color: {risk_color};">
+                            {risk['risk_level']} Risk
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    **Risk Factors:**
+                    - 🏙️ City AQI: **{current_aqi}** ({risk['base_risk']})
+                    - 👤 Age: **{user_age}** {"(higher risk)" if user_age > 60 or user_age < 18 else "(normal)"}
+                    - 💊 Conditions: **{', '.join(conditions) if conditions else "None"}**
+                    """)
+                    
+                    if risk_score >= 50:
+                        st.warning("⚠️ Your risk level suggests you should prioritize comprehensive health coverage.")
+                    else:
+                        st.success("✅ Your risk level is manageable with standard health coverage.")
+                
+                # Section 2: Recommended Health Checkups
+                st.markdown("---")
+                st.markdown("### 💊 Recommended Health Checkups")
+                
+                checkup_cache_key = f"checkups_{selected_city}_{current_aqi}"
+                
+                if st.button("🔍 Get Personalized Checkup Recommendations", key="get_checkups"):
+                    with st.spinner("Analyzing your health needs..."):
+                        checkups = insurance_agent.get_health_checkup_recommendations(
+                            selected_city, current_aqi, 
+                            f"Age {user_age}, conditions: {conditions}"
+                        )
+                        st.session_state[checkup_cache_key] = checkups
+                
+                if checkup_cache_key in st.session_state:
+                    checkups = st.session_state[checkup_cache_key]
+                    
+                    st.markdown(f"**Risk Level:** {checkups.get('risk_level', 'moderate').title()}")
+                    
+                    # Display checkups in a nice table
+                    annual_tests = checkups.get('annual_checkups', [])
+                    if annual_tests:
+                        st.markdown("**Annual Tests for Pollution Exposure:**")
+                        for test in annual_tests[:5]:
+                            with st.expander(f"🩺 {test.get('test_name', 'Test')} - ₹{test.get('approximate_cost_inr', 0)}"):
+                                st.write(f"**Purpose:** {test.get('purpose', 'General health')}")
+                                st.write(f"**Frequency:** {test.get('frequency', 'Annual')}")
+                        
+                        total_cost = checkups.get('total_annual_checkup_cost_inr', 0)
+                        st.info(f"💰 **Estimated Annual Checkup Cost:** ₹{total_cost}")
+                    
+                    # Tips
+                    tips = checkups.get('tips', [])
+                    if tips:
+                        st.markdown("**💡 Tips:**")
+                        for tip in tips[:3]:
+                            st.write(f"- {tip}")
+                else:
+                    st.info("👆 Click the button to get personalized checkup recommendations")
+                
+                # Section 3: Insurance Recommendations
+                st.markdown("---")
+                st.markdown("### 🛡️ Insurance Plan Recommendations")
+                st.markdown("*AI-powered search for plans that cover pollution-related illness*")
+                
+                insurance_cache_key = f"insurance_{selected_city}_{user_age}_{family_size}"
+                
+                if st.button("🔍 Find Insurance Plans", type="primary", key="find_insurance"):
+                    with st.spinner("🌐 Searching for best insurance plans..."):
+                        insurance = insurance_agent.get_insurance_recommendations(
+                            selected_city, current_aqi, user_age, family_size,
+                            [c.lower() for c in conditions]
+                        )
+                        st.session_state[insurance_cache_key] = insurance
+                
+                if insurance_cache_key in st.session_state:
+                    insurance = st.session_state[insurance_cache_key]
+                    
+                    # Coverage recommendation
+                    coverage = insurance.get('recommended_coverage_amount_lakhs', 10)
+                    st.success(f"💰 **Recommended Coverage:** ₹{coverage} Lakhs for your family of {family_size}")
+                    st.caption(insurance.get('coverage_justification', ''))
+                    
+                    # Insurance plans
+                    plans = insurance.get('insurance_plans', [])
+                    if plans:
+                        st.markdown("**📋 Recommended Plans:**")
+                        
+                        for plan in plans[:4]:
+                            with st.expander(f"🏥 {plan.get('provider', 'Provider')} - {plan.get('plan_name', 'Plan')}", expanded=False):
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.markdown(f"**Coverage:** ₹{plan.get('coverage_lakhs', 0)} Lakhs")
+                                    st.markdown(f"**Premium:** ₹{plan.get('annual_premium_inr', 0):,}/year")
+                                    st.markdown(f"**Waiting Period:** {plan.get('waiting_period_months', 0)} months")
+                                with col2:
+                                    st.markdown("**Key Features:**")
+                                    for feature in plan.get('key_features', [])[:3]:
+                                        st.write(f"✓ {feature}")
+                                
+                                if plan.get('covers_pollution_illness'):
+                                    st.success("✅ Covers pollution-related illness")
+                                
+                                st.caption(f"Best for: {plan.get('best_for', 'General use')}")
+                    
+                    # Add-ons
+                    addons = insurance.get('recommended_add_ons', [])
+                    if addons:
+                        st.markdown("**🔧 Recommended Add-ons:**")
+                        for addon in addons[:2]:
+                            st.write(f"- **{addon.get('name')}** (₹{addon.get('approximate_cost_inr', 0)}/year): {addon.get('why_needed', '')}")
+                    
+                    # Tips
+                    tips = insurance.get('tips', [])
+                    if tips:
+                        st.markdown("**💡 Insurance Tips:**")
+                        for tip in tips[:3]:
+                            st.info(tip)
+                else:
+                    st.info("👆 Click to search for insurance plans suited to your needs")
+                
+                # Section 4: Cost Comparison
+                st.markdown("---")
+                st.markdown("### 💳 With vs Without Insurance")
+                
+                analyzer = PolicyImpactAnalyzer()
+                health_costs = analyzer.calculate_health_cost_impact(selected_city, 2024)
+                
+                if health_costs:
+                    per_capita = health_costs.get('per_capita_cost', 5000)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.error(f"""
+                        **❌ Without Insurance**  
+                        Annual out-of-pocket: ₹{per_capita * 1.5:.0f}  
+                        One hospitalization: ₹50,000+  
+                        Risk of major expense: HIGH
+                        """)
+                    with col2:
+                        st.success(f"""
+                        **✅ With Health Insurance**  
+                        Annual premium: ₹12,000-20,000  
+                        Hospitalization: Covered  
+                        Financial protection: SECURED
+                        """)
+            else:
+                st.warning("⚠️ Add GEMINI_API_KEY to .env for insurance recommendations")
+                
+        except ImportError:
+            st.warning("Insurance planning agent not available.")
+        except Exception as e:
+            st.error(f"Error loading insurance planner: {str(e)}")
     
     with tab5:
         st.subheader("🗺️ Multi-City Comparison")
@@ -701,7 +1129,7 @@ def main():
                     'Current AQI': city_latest['AQI'],
                     'PM2.5': city_latest['PM2.5'],
                     'Population': city_config.get('population', 0),
-                    'Tier': city_config.get('tier', 'N/A')
+                    'Tier': city_config.get('tier', 0)  # Use 0 for unknown cities
                 })
             
             comparison_df = pd.DataFrame(comparison_data).sort_values('Current AQI', ascending=False)
@@ -722,96 +1150,106 @@ def main():
             st.dataframe(comparison_df, use_container_width=True)
     
     with tab6:
-        st.subheader("🤖 AI-Powered Health Advisor")
-        st.markdown("*Powered by Google Gemini 2.0 Flash*")
+        st.subheader("🕵️‍♂️ Agentic Pollution Analysis")
+        st.markdown("*Multi-Agent System: Scientist (Detective) & Doctor (Guardian)*")
         
         try:
-            from gemini_advisor import GeminiHealthAdvisor
+            # Check for API Key
+            GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+            if not GEMINI_API_KEY:
+                st.error("❌ Gemini API Key not found. Please check your .env file.")
+                st.stop()
+
+            # Mode Selection
+            analysis_mode = st.radio(
+                "Select Analysis Mode:",
+                ["🤖 Standard Chatbot (Advisor)", "🕵️‍♂️ Deep Agent Analysis (Detective + Guardian)"],
+                index=1
+            )
             
-            # Initialize Gemini with API key
-            GEMINI_API_KEY = "AIzaSyA6SzVuFQQDyGx4wlCfnflCdYl1J4JQkH0"
-            advisor = GeminiHealthAdvisor(GEMINI_API_KEY)
-            
-            col_ai1, col_ai2 = st.columns([2, 1])
-            
-            with col_ai1:
-                st.markdown("### 💬 Ask Me Anything About Air Quality")
+            if analysis_mode == "🤖 Standard Chatbot (Advisor)":
+                from gemini_advisor import GeminiHealthAdvisor
+                advisor = GeminiHealthAdvisor(GEMINI_API_KEY)
                 
-                # Initialize chat history in session state
-                if 'chat_history' not in st.session_state:
-                    st.session_state.chat_history = []
+                col_ai1, col_ai2 = st.columns([2, 1])
                 
-                # User input
-                user_question = st.text_input(
-                    "Type your question:",
-                    placeholder="Is it safe to go jogging today? Should I wear a mask?"
-                )
-                
-                if st.button("🚀 Get AI Advice", type="primary"):
-                    if user_question:
+                with col_ai1:
+                    if 'chat_history' not in st.session_state:
+                        st.session_state.chat_history = []
+                    
+                    user_question = st.text_input("Ask a question:", placeholder="Should I wear a mask today?")
+                    
+                    if st.button("🚀 Ask Advisor") and user_question:
                         with st.spinner("Thinking..."):
-                            response = advisor.chat(
-                                user_message=user_question,
-                                city=selected_city,
-                                aqi=current_aqi,
-                                category=category,
-                                user_profile=user_profile
-                            )
+                            response = advisor.chat(user_question, selected_city, current_aqi, category, user_profile)
+                            st.session_state.chat_history.append({'q': user_question, 'a': response})
+                    
+                    for chat in reversed(st.session_state.chat_history[-5:]):
+                        with st.expander(f"Q: {chat['q'][:40]}...", expanded=True):
+                            st.markdown(f"**AI:** {chat['a']}")
+
+            else:  # Deep Agent Analysis
+                from agents.orchestrator import AgentOrchestrator
+                
+                st.info("ℹ️ **Deep Analysis** uses two AI agents: one to analyze raw sensor/weather data, and another to formulate health advice.")
+                
+                if st.button("🚀 Run Full Analysis", type="primary"):
+                    orchestrator = AgentOrchestrator(GEMINI_API_KEY)
+                    
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    # Step 1: Detective
+                    status_text.text("🕵️‍♂️ Detective Agent: Scanning sensors and weather patterns...")
+                    progress_bar.progress(30)
+                    
+                    result = orchestrator.run_analysis(selected_city, user_profile)
+                    
+                    if "error" in result and result.get("error"):
+                        progress_bar.empty()
+                        status_text.error(f"Analysis Failed: {result.get('message')}")
+                    else:
+                        progress_bar.progress(100)
+                        status_text.success("Analysis Complete!")
+                        
+                        # Display Report
+                        st.markdown("### 📊 Situation Report")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown(f"""
+                            <div style="background: #1e293b; padding: 15px; border-radius: 10px; border-left: 5px solid #60a5fa;">
+                                <h4 style="color: #60a5fa; margin:0;">🕵️‍♂️ The Scientist's Findings</h4>
+                                <p style="color: #e2e8f0; font-size: 14px; margin-top: 10px;">
+                                    {result['situation_report']}
+                                </p>
+                                <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
+                                    <strong>Data Sources:</strong> OpenMeteo AQI + Weather
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
                             
-                            # Add to chat history
-                            st.session_state.chat_history.append({
-                                'question': user_question,
-                                'answer': response
-                            })
-                
-                # Display chat history
-                if st.session_state.chat_history:
-                    st.markdown("---")
-                    st.markdown("### 📝 Conversation History")
-                    for i, chat in enumerate(reversed(st.session_state.chat_history[-5:])):
-                        with st.expander(f"Q: {chat['question'][:50]}...", expanded=(i==0)):
-                            st.markdown(f"**You asked:** {chat['question']}")
-                            st.markdown(f"**AI Response:** {chat['answer']}")
-                
-                if st.button("🗑️ Clear Chat History"):
-                    st.session_state.chat_history = []
-                    st.rerun()
-            
-            with col_ai2:
-                st.markdown("### 🎯 Quick AI Advice")
-                
-                if st.button("Get Personalized Advice", use_container_width=True):
-                    with st.spinner("Generating personalized advice..."):
-                        advice = advisor.get_personalized_advice(
-                            city=selected_city,
-                            aqi=current_aqi,
-                            category=category,
-                            pm25=pm25_val if pm25_val != 'N/A' else 0,
-                            pm10=pm10_val if pm10_val != 'N/A' else 0,
-                            user_profile=user_profile,
-                            activity=planned_activity
-                        )
-                        st.success(advice)
-                
-                st.markdown("---")
-                st.markdown("### 🏃 Activity Recommendation")
-                
-                activity_options = ["jogging", "cycling", "walking", "outdoor yoga", "children's play", "morning exercise"]
-                selected_activity = st.selectbox("Choose activity:", activity_options)
-                
-                if st.button("Check Activity Safety", use_container_width=True):
-                    with st.spinner("Analyzing..."):
-                        recommendation = advisor.get_activity_recommendation(
-                            city=selected_city,
-                            aqi=current_aqi,
-                            activity_type=selected_activity,
-                            user_profile=user_profile
-                        )
-                        st.info(recommendation)
-                
+                            # Weather stats
+                            w = result.get('weather', {})
+                            st.markdown(f"**Weather Context:** 🌬️ Wind: {w.get('wind_speed_10m', 'N/A')} km/h | 🌡️ Temp: {w.get('temperature_2m', 'N/A')}°C")
+                            
+                        with col2:
+                            st.markdown(f"""
+                            <div style="background: #1e293b; padding: 15px; border-radius: 10px; border-left: 5px solid #34d399;">
+                                <h4 style="color: #34d399; margin:0;">👩‍⚕️ The Doctor's Advice</h4>
+                                <p style="color: #e2e8f0; font-size: 14px; margin-top: 10px;">
+                                    {result['health_advice']}
+                                </p>
+                                <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
+                                    <strong>Profile:</strong> {user_profile}
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
         except Exception as e:
-            st.error(f"⚠️ AI Advisor not available: {str(e)}")
-            st.info("Make sure google-generativeai is installed: `pip install google-generativeai`")
+            st.error(f"⚠️ System Error: {str(e)}")
+            if "quota" in str(e).lower():
+                st.warning("You may have exceeded the API rate limit for the free tier. Please try again later.")
 
 
 if __name__ == "__main__":
