@@ -45,6 +45,8 @@ logs/
 
 # Large data files (keep structure, exclude large CSVs)
 data/raw/*.csv
+!data/raw/india_aqi_complete.csv
+!data/raw/india_aqi_kaggle_real.csv
 data/raw/kaggle_real/
 data/processed/*.csv
 !data/raw/.gitkeep
