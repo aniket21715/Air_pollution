@@ -511,7 +511,6 @@ def main():
     # Real-Time AQI Section
     st.markdown(f"### Current Air Quality in {selected_city}")
     
-    col1, col2 = st.columns([2, 1])
     
     # Always create city_data for historical features (used in tabs)
     city_data = df[df['City'] == selected_city].copy()
@@ -522,54 +521,52 @@ def main():
         st.info("Try selecting a different city from the dropdown.")
         return
     
-    with col1:
-        # Try to get REAL-TIME data from Open-Meteo API
-        realtime_data = get_realtime_aqi(selected_city)
-        
-        if realtime_data and realtime_data.get('aqi'):
-            # Use REAL-TIME API data
-            current_aqi = realtime_data['aqi']
-            category = realtime_data.get('category', 'Unknown')
-            color = realtime_data.get('color', '#888888')
-            data_source = f"Live data ({realtime_data.get('timestamp', 'now')[:16]})"
-            pm25_val = realtime_data.get('pm25', 'N/A')
-            pm10_val = realtime_data.get('pm10', 'N/A')
-            no2_val = realtime_data.get('no2', 'N/A')
-        else:
-            # Fallback to historical data
-            latest_data = city_data.iloc[-1]
-            current_aqi = latest_data['AQI']
-            category, color, health_impact = get_aqi_category(current_aqi)
-            data_source = f"Historical data ({latest_data['Date'].strftime('%Y-%m-%d')})"
-            pm25_val = f"{latest_data['PM2.5']:.1f}"
-            pm10_val = f"{latest_data['PM10']:.1f}"
-            no2_val = f"{latest_data['NO2']:.1f}"
-        
-        # Display AQI with Material Design
+    # Try to get REAL-TIME data from Open-Meteo API
+    realtime_data = get_realtime_aqi(selected_city)
+    
+    if realtime_data and realtime_data.get('aqi'):
+        # Use REAL-TIME API data
+        current_aqi = realtime_data['aqi']
+        category = realtime_data.get('category', 'Unknown')
+        color = realtime_data.get('color', '#888888')
+        data_source = f"Live data ({realtime_data.get('timestamp', 'now')[:16]})"
+        pm25_val = realtime_data.get('pm25', 'N/A')
+        pm10_val = realtime_data.get('pm10', 'N/A')
+        no2_val = realtime_data.get('no2', 'N/A')
+    else:
+        # Fallback to historical data
+        latest_data = city_data.iloc[-1]
+        current_aqi = latest_data['AQI']
+        category, color, health_impact = get_aqi_category(current_aqi)
+        data_source = f"Historical data ({latest_data['Date'].strftime('%Y-%m-%d')})"
+        pm25_val = f"{latest_data['PM2.5']:.1f}"
+        pm10_val = f"{latest_data['PM10']:.1f}"
+        no2_val = f"{latest_data['NO2']:.1f}"
+
+    # Display AQI with Metrics in same box
         st.markdown(f"""
-        <div class="aqi-display" style="background-color: {color}; color: white;">
-            {int(current_aqi)}
-            <div class="aqi-label" style="color: rgba(255,255,255,0.9);">{category}</div>
-            <div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 8px;">{data_source}</div>
+        <div class="aqi-display" style="background-color: {color}; color: white; padding: 24px;">
+            <div style="font-size: 48px; font-weight: bold; line-height: 1;">{int(current_aqi)}</div>
+            <div class="aqi-label" style="color: rgba(255,255,255,0.95); font-size: 24px; margin-bottom: 20px;">{category}</div>
+            
+            <div style="display: flex; justify-content: space-around; margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.2);">
+                <div style="text-align: center;">
+                    <div style="font-size: 12px; color: rgba(255,255,255,0.8);">PM2.5</div>
+                    <div style="font-size: 18px; font-weight: 500;">{pm25_val} <span style="font-size: 12px;">µg/m³</span></div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 12px; color: rgba(255,255,255,0.8);">PM10</div>
+                    <div style="font-size: 18px; font-weight: 500;">{pm10_val} <span style="font-size: 12px;">µg/m³</span></div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 12px; color: rgba(255,255,255,0.8);">NO₂</div>
+                    <div style="font-size: 18px; font-weight: 500;">{no2_val} <span style="font-size: 12px;">µg/m³</span></div>
+                </div>
+            </div>
+            
+            <div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 20px; text-align: center;">{data_source}</div>
         </div>
         """, unsafe_allow_html=True)
-    
-    with col2:
-        st.metric(
-            "PM2.5", 
-            f"{pm25_val} µg/m³" if pm25_val != 'N/A' else "N/A",
-            help="Fine particulate matter smaller than 2.5 micrometers. Can penetrate deep into lungs and bloodstream. Major cause of respiratory and cardiovascular diseases."
-        )
-        st.metric(
-            "PM10", 
-            f"{pm10_val} µg/m³" if pm10_val != 'N/A' else "N/A",
-            help="Particulate matter smaller than 10 micrometers. Includes dust, pollen, and mold. Can irritate eyes, nose, and throat."
-        )
-        st.metric(
-            "NO₂", 
-            f"{no2_val} µg/m³" if no2_val != 'N/A' else "N/A",
-            help="Nitrogen Dioxide from vehicle exhaust and power plants. Causes respiratory inflammation and worsens asthma."
-        )
     
     # Personalized Health Recommendation
     recommendation = HealthAdvisor.get_recommendation(current_aqi, user_profile)
