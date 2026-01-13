@@ -511,6 +511,7 @@ def main():
     # Real-Time AQI Section
     st.markdown(f"### Current Air Quality in {selected_city}")
     
+    col1, col2 = st.columns([2, 1])
     
     # Always create city_data for historical features (used in tabs)
     city_data = df[df['City'] == selected_city].copy()
@@ -542,31 +543,31 @@ def main():
         pm25_val = f"{latest_data['PM2.5']:.1f}"
         pm10_val = f"{latest_data['PM10']:.1f}"
         no2_val = f"{latest_data['NO2']:.1f}"
-
+    
     # Display AQI with Metrics in same box
-        st.markdown(f"""
-        <div class="aqi-display" style="background-color: {color}; color: white; padding: 24px;">
-            <div style="font-size: 48px; font-weight: bold; line-height: 1;">{int(current_aqi)}</div>
-            <div class="aqi-label" style="color: rgba(255,255,255,0.95); font-size: 24px; margin-bottom: 20px;">{category}</div>
-            
-            <div style="display: flex; justify-content: space-around; margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.2);">
-                <div style="text-align: center;">
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.8);">PM2.5</div>
-                    <div style="font-size: 18px; font-weight: 500;">{pm25_val} <span style="font-size: 12px;">µg/m³</span></div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.8);">PM10</div>
-                    <div style="font-size: 18px; font-weight: 500;">{pm10_val} <span style="font-size: 12px;">µg/m³</span></div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.8);">NO₂</div>
-                    <div style="font-size: 18px; font-weight: 500;">{no2_val} <span style="font-size: 12px;">µg/m³</span></div>
-                </div>
+    st.markdown(f"""
+    <div class="aqi-display" style="background-color: {color}; color: white; padding: 24px;">
+        <div style="font-size: 48px; font-weight: bold; line-height: 1;">{int(current_aqi)}</div>
+        <div class="aqi-label" style="color: rgba(255,255,255,0.95); font-size: 24px; margin-bottom: 20px;">{category}</div>
+        
+        <div style="display: flex; justify-content: space-around; margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.2);">
+            <div style="text-align: center;">
+                <div style="font-size: 12px; color: rgba(255,255,255,0.8);">PM2.5</div>
+                <div style="font-size: 18px; font-weight: 500;">{pm25_val} <span style="font-size: 12px;">µg/m³</span></div>
             </div>
-            
-            <div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 20px; text-align: center;">{data_source}</div>
+            <div style="text-align: center;">
+                <div style="font-size: 12px; color: rgba(255,255,255,0.8);">PM10</div>
+                <div style="font-size: 18px; font-weight: 500;">{pm10_val} <span style="font-size: 12px;">µg/m³</span></div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 12px; color: rgba(255,255,255,0.8);">NO₂</div>
+                <div style="font-size: 18px; font-weight: 500;">{no2_val} <span style="font-size: 12px;">µg/m³</span></div>
+            </div>
         </div>
-        """, unsafe_allow_html=True)
+        
+        <div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 20px; text-align: center;">{data_source}</div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Personalized Health Recommendation
     recommendation = HealthAdvisor.get_recommendation(current_aqi, user_profile)
