@@ -583,10 +583,6 @@ def main():
     <div class="health-card" style="border-color: {recommendation['color']};">
         <h3>{rec_message}</h3>
         <p><strong>Health Impact:</strong> {recommendation['health_impact']}</p>
-        <p><strong>Recommended Actions:</strong></p>
-        <ul>
-            {''.join([f'<li>{action}</li>' for action in recommendation['actions']])}
-        </ul>
     </div>
     """, unsafe_allow_html=True)
     
