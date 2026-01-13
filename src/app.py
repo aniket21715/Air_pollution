@@ -550,9 +550,7 @@ def main():
         <div class="aqi-display" style="background-color: {color}; color: white;">
             {int(current_aqi)}
             <div class="aqi-label" style="color: rgba(255,255,255,0.9);">{category}</div>
-        </div>
-        <div style="text-align: center; font-size: 12px; color: #757575; margin-top: 8px;">
-            {data_source}
+            <div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 8px;">{data_source}</div>
         </div>
         """, unsafe_allow_html=True)
     
