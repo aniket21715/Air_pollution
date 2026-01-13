@@ -157,23 +157,29 @@ Be direct and practical."""
         
         time_of_day = "morning" if current_hour < 12 else "afternoon" if current_hour < 17 else "evening"
         
-        prompt = f"""You are an air quality advisor for {city}. Current AQI is {aqi} ({category}).
+        prompt = f"""You are an air quality advisor for {city}, India. Current AQI is {aqi} ({category}).
 User profile: {user_profile}. Time: {time_of_day}.
 
-Generate EXACTLY 4 activity suggestions in this JSON format (no markdown, just pure JSON):
+Generate EXACTLY 4 unique activity suggestions in this JSON format (no markdown, just pure JSON):
 {{
   "suggestions": [
-    {{"activity": "Activity Name", "icon": "emoji", "safety": "safe/caution/avoid", "tip": "One short tip"}},
-    {{"activity": "Activity Name", "icon": "emoji", "safety": "safe/caution/avoid", "tip": "One short tip"}},
-    {{"activity": "Activity Name", "icon": "emoji", "safety": "safe/caution/avoid", "tip": "One short tip"}},
-    {{"activity": "Activity Name", "icon": "emoji", "safety": "safe/caution/avoid", "tip": "One short tip"}}
+    {{"activity": "Specific Activity", "safety": "safe/caution/avoid", "tip": "Actionable tip"}},
+    {{"activity": "Another Activity", "safety": "safe/caution/avoid", "tip": "Actionable tip"}},
+    {{"activity": "Third Activity", "safety": "safe/caution/avoid", "tip": "Actionable tip"}},
+    {{"activity": "Fourth Activity", "safety": "safe/caution/avoid", "tip": "Actionable tip"}}
   ],
-  "best_time": "Best time for outdoor activities today",
-  "general_tip": "One general tip for the day"
+  "best_time": "Specific time window recommendation",
+  "general_tip": "One practical tip for today"
 }}
 
-Include a mix of indoor and outdoor activities appropriate for the AQI level.
-For poor AQI, suggest more indoor alternatives. Be practical and India-specific."""
+IMPORTANT:
+- Activities must be SPECIFIC to current AQI ({aqi}) and time ({time_of_day})
+- For AQI > 300: Only indoor activities, emphasize air purifiers, masks essential
+- For AQI 200-300: Mostly indoor, very limited outdoor with N95
+- For AQI 100-200: Mix indoor/outdoor, morning/evening preferred
+- For AQI < 100: Outdoor activities safe
+- Tips should be specific and actionable
+- No emojis in the output"""
 
         try:
             response = self.client.models.generate_content(
@@ -194,39 +200,70 @@ For poor AQI, suggest more indoor alternatives. Be practical and India-specific.
 
 
     def _get_fallback_suggestions(self, aqi):
-        """Return fallback suggestions when API fails."""
-        if aqi <= 100:
+        """Return fallback suggestions when API fails - varied by AQI level."""
+        from datetime import datetime
+        hour = datetime.now().hour
+        
+        if aqi <= 50:
             return {
                 "suggestions": [
-                    {"activity": "Morning Jog", "icon": "🏃", "safety": "safe", "tip": "Great conditions for outdoor exercise"},
-                    {"activity": "Outdoor Yoga", "icon": "🧘", "safety": "safe", "tip": "Perfect for breathing exercises"},
-                    {"activity": "Cycling", "icon": "🚴", "safety": "safe", "tip": "Enjoy the fresh air"},
-                    {"activity": "Park Picnic", "icon": "🧺", "safety": "safe", "tip": "Ideal weather for outdoor activities"}
+                    {"activity": "Outdoor Jogging", "safety": "safe", "tip": "Perfect air quality for running"},
+                    {"activity": "Park Yoga", "safety": "safe", "tip": "Great for breathing exercises outdoors"},
+                    {"activity": "Cycling", "safety": "safe", "tip": "Explore outdoor cycling tracks"},
+                    {"activity": "Kids Outdoor Play", "safety": "safe", "tip": "Safe for children all day"}
                 ],
-                "best_time": "Any time today is suitable",
+                "best_time": "Any time today is excellent",
                 "general_tip": "Excellent air quality - enjoy outdoor activities!"
             }
-        elif aqi <= 200:
+        elif aqi <= 100:
             return {
                 "suggestions": [
-                    {"activity": "Indoor Gym", "icon": "🏋️", "safety": "safe", "tip": "Better to exercise indoors"},
-                    {"activity": "Short Walk", "icon": "🚶", "safety": "caution", "tip": "Limit to 30 minutes"},
-                    {"activity": "Work from Home", "icon": "💻", "safety": "safe", "tip": "Reduce commute exposure"},
-                    {"activity": "Indoor Games", "icon": "🎮", "safety": "safe", "tip": "Keep windows closed"}
+                    {"activity": "Morning Walk", "safety": "safe", "tip": "Best before 9 AM"},
+                    {"activity": "Indoor Gym", "safety": "safe", "tip": "Good for intensive cardio"},
+                    {"activity": "Evening Stroll", "safety": "safe", "tip": "After 6 PM when cooler"},
+                    {"activity": "Short Cycling", "safety": "caution", "tip": "Limit to 45 minutes"}
                 ],
-                "best_time": "Early morning (6-8 AM) or late evening",
-                "general_tip": "Moderate air quality - limit outdoor exposure"
+                "best_time": "6-9 AM or after 6 PM",
+                "general_tip": "Satisfactory air - outdoor activities OK with mild caution"
+            }
+        elif aqi <= 200:
+            activities = [
+                {"activity": "Indoor Swimming", "safety": "safe", "tip": "Great cardio without outdoor exposure"},
+                {"activity": "Home Workout", "safety": "safe", "tip": "Yoga or bodyweight exercises"},
+                {"activity": "Quick Errands", "safety": "caution", "tip": "Use N95 mask, limit to 30 min"},
+                {"activity": "Mall Walk", "safety": "safe", "tip": "AC spaces have filtered air"}
+            ] if hour >= 12 else [
+                {"activity": "Early Morning Walk", "safety": "caution", "tip": "Before 7 AM only with mask"},
+                {"activity": "Indoor Gym", "safety": "safe", "tip": "Better than outdoor exercise"},
+                {"activity": "Home Yoga", "safety": "safe", "tip": "Keep windows closed"},
+                {"activity": "Work from Home", "safety": "safe", "tip": "Reduce commute exposure"}
+            ]
+            return {
+                "suggestions": activities,
+                "best_time": "Only before 7 AM if outdoor needed",
+                "general_tip": "Moderate pollution - prioritize indoor activities"
+            }
+        elif aqi <= 300:
+            return {
+                "suggestions": [
+                    {"activity": "Indoor Activities Only", "safety": "safe", "tip": "Keep windows sealed"},
+                    {"activity": "Air Purifier Usage", "safety": "safe", "tip": "Run on high, clean filters"},
+                    {"activity": "Light Indoor Exercise", "safety": "safe", "tip": "Yoga or stretching only"},
+                    {"activity": "N95 for Outdoors", "safety": "caution", "tip": "Essential, limit to 15 min"}
+                ],
+                "best_time": "Avoid outdoor activities until AQI drops below 150",
+                "general_tip": "Poor air quality - health advisory active, use masks outdoors"
             }
         else:
             return {
                 "suggestions": [
-                    {"activity": "Stay Indoors", "icon": "🏠", "safety": "safe", "tip": "Keep windows and doors closed"},
-                    {"activity": "Use Air Purifier", "icon": "🌬️", "safety": "safe", "tip": "Run purifier on high"},
-                    {"activity": "Indoor Exercise", "icon": "🏋️", "safety": "safe", "tip": "Do yoga or stretching at home"},
-                    {"activity": "Wear N95 Mask", "icon": "😷", "safety": "caution", "tip": "Essential if going outside"}
+                    {"activity": "Stay Indoors", "safety": "safe", "tip": "Do not go outside unless emergency"},
+                    {"activity": "HEPA Purifier", "safety": "safe", "tip": "Run 24/7, seal room gaps"},
+                    {"activity": "Rest", "safety": "safe", "tip": "Light activities only, stay hydrated"},
+                    {"activity": "Monitor Health", "safety": "caution", "tip": "Watch for cough, breathlessness"}
                 ],
-                "best_time": "Avoid outdoor activities until AQI improves",
-                "general_tip": "Poor air quality - prioritize indoor activities and use masks outdoors"
+                "best_time": "No safe outdoor window - check tomorrow's forecast",
+                "general_tip": "SEVERE pollution - public health emergency, stay indoors"
             }
 
 

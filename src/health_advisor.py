@@ -53,11 +53,11 @@ class HealthAdvisor:
         }
     }
     
-    # Activity recommendations by AQI range and profile
+    # Activity recommendations by AQI range and profile - NO EMOJIS
     RECOMMENDATIONS = {
         "Good": {  # AQI 0-50
             "general": {
-                "icon": "✅",
+                "icon": "",
                 "message": "Air quality is excellent! Safe for all outdoor activities.",
                 "actions": [
                     "Perfect day for outdoor exercise and sports",
@@ -67,14 +67,14 @@ class HealthAdvisor:
                 ]
             },
             "all": {
-                "icon": "✅",
+                "icon": "",
                 "message": "Air quality is excellent for everyone!",
                 "actions": ["Enjoy outdoor activities without concerns"]
             }
         },
         "Satisfactory": {  # AQI 51-100
             "general": {
-                "icon": "🟢",
+                "icon": "",
                 "message": "Air quality is acceptable for most people.",
                 "actions": [
                     "Safe for outdoor activities",
@@ -83,7 +83,7 @@ class HealthAdvisor:
                 ]
             },
             "asthma": {
-                "icon": "⚠️",
+                "icon": "",
                 "message": "MODERATE RISK: Monitor your breathing closely.",
                 "actions": [
                     "Have your rescue inhaler readily available",
@@ -92,7 +92,7 @@ class HealthAdvisor:
                 ]
             },
             "pregnant": {
-                "icon": "⚠️",
+                "icon": "",
                 "message": "Generally safe but limit prolonged exposure.",
                 "actions": [
                     "Moderate outdoor activities are acceptable",
@@ -102,7 +102,7 @@ class HealthAdvisor:
         },
         "Moderate": {  # AQI 101-200
             "general": {
-                "icon": "🟠",
+                "icon": "",
                 "message": "Sensitive groups may experience health effects.",
                 "actions": [
                     "Limit prolonged outdoor exertion",
@@ -111,18 +111,18 @@ class HealthAdvisor:
                 ]
             },
             "asthma": {
-                "icon": "🚨",
+                "icon": "",
                 "message": "HIGH RISK: Avoid outdoor activities if possible.",
                 "actions": [
                     "Use preventive inhaler before going out",
                     "Stay indoors as much as possible",
                     "If you must go out, wear an N95 mask",
-                    "   Keep indoor activities","Have peak flow meter ready",
-                    "Avoid exercise entirely—opt for indoor yoga or stretching"
+                    "Keep indoor activities, have peak flow meter ready",
+                    "Avoid exercise entirely - opt for indoor yoga or stretching"
                 ]
             },
             "elderly": {
-                "icon": "⚠️",
+                "icon": "",
                 "message": "Reduce outdoor exposure, especially strenuous activities.",
                 "actions": [
                     "Limit time outdoors to essential activities only",
@@ -131,7 +131,7 @@ class HealthAdvisor:
                 ]
             },
             "children": {
-                "icon": "⚠️",
+                "icon": "",
                 "message": "Reduce outdoor play time and avoid strenuous games.",
                 "actions": [
                     "Keep outdoor play to minimum",
@@ -140,10 +140,10 @@ class HealthAdvisor:
                 ]
             },
             "athlete": {
-                "icon": "🏃‍♂️",
+                "icon": "",
                 "message": "Switch to indoor training or reschedule workouts.",
                 "actions": [
-                    "⛔ AVOID outdoor running/cycling",
+                    "AVOID outdoor running/cycling",
                     "Switch to gym or indoor training",
                     "If you must train outdoors, choose early morning (6-7 AM)",
                     "Reduce intensity by 30-40%"
@@ -152,10 +152,10 @@ class HealthAdvisor:
         },
         "Poor": {  # AQI 201-300
             "general": {
-                "icon": "🔴",
+                "icon": "",
                 "message": "Everyone may experience health effects.",
                 "actions": [
-                    "⛔ Avoid prolonged outdoor activities",
+                    "Avoid prolonged outdoor activities",
                     "Wear N95 mask if you must go outside",
                     "Close all windows and use air purifiers",
                     "Postpone or cancel outdoor events",
@@ -163,10 +163,10 @@ class HealthAdvisor:
                 ]
             },
             "asthma": {
-                "icon": "🚨",
+                "icon": "",
                 "message": "SEVERE RISK: Stay indoors. Medical attention may be needed.",
                 "actions": [
-                    "🏠 STAY INDOORS - do not go outside",
+                    "STAY INDOORS - do not go outside",
                     "Use your preventive medication even if you feel okay",
                     "Keep rescue inhaler within arm's reach at all times",
                     "Monitor oxygen saturation if you have a pulse oximeter",
@@ -175,7 +175,7 @@ class HealthAdvisor:
                 ]
             },
             "elderly": {
-                "icon": "🚨",
+                "icon": "",
                 "message": "STAY INDOORS: High risk of respiratory complications.",
                 "actions": [
                     "Do not venture outside unless absolutely necessary",
@@ -185,7 +185,7 @@ class HealthAdvisor:
                 ]
             },
             "children": {
-                "icon": "🚨",
+                "icon": "",
                 "message": "SCHOOL CLOSURE RECOMMENDED: Air is unsafe for children.",
                 "actions": [
                     "Schools should declare half-day or full holiday",
@@ -195,7 +195,7 @@ class HealthAdvisor:
                 ]
             },
             "pregnant": {
-                "icon": "🚨",
+                "icon": "",
                 "message": "CRITICAL: Avoid all outdoor exposure for fetal safety.",
                 "actions": [
                     "Complete indoor rest recommended",
@@ -204,10 +204,10 @@ class HealthAdvisor:
                 ]
             },
             "athlete": {
-                "icon": "⛔",
+                "icon": "",
                 "message": "ALL OUTDOOR TRAINING CANCELLED: Indoor only.",
                 "actions": [
-                    "⛔ Complete outdoor exercise ban",
+                    "Complete outdoor exercise ban",
                     "Switch to indoor alternatives (treadmill, stationary bike)",
                     "Reduce training intensity significantly",
                     "Rest day recommended"
@@ -216,10 +216,10 @@ class HealthAdvisor:
         },
         "Very Poor": {  # AQI 301-400
             "general": {
-                "icon": "🔴",
+                "icon": "",
                 "message": "Health alert: Everyone is at risk. Minimize outdoor exposure.",
                 "actions": [
-                    "🏠 STAY INDOORS COMPLETELY",
+                    "STAY INDOORS COMPLETELY",
                     "Wear N95 mask even for brief outdoor exposure",
                     "Seal windows and doors",
                     "Use high-quality air purifiers (HEPA filters)",
@@ -227,7 +227,7 @@ class HealthAdvisor:
                 ]
             },
             "all": {
-                "icon": "  🚨",
+                "icon": "",
                 "message": "HAZARDOUS CONDITIONS: Medical emergency risk for all groups.",
                 "actions": [
                     "Complete indoor isolation",
@@ -240,11 +240,11 @@ class HealthAdvisor:
         },
         "Severe": {  # AQI 401-500
             "all": {
-                "icon": "☠️",
+                "icon": "",
                 "message": "EMERGENCY: Hazardous to all. Immediate health impacts expected.",
                 "actions": [
-                    "☠️ PUBLIC HEALTH EMERGENCY",
-                    "🏠 ABSOLUTE INDOOR LOCKDOWN",
+                    "PUBLIC HEALTH EMERGENCY",
+                    "ABSOLUTE INDOOR LOCKDOWN",
                     "Do not go outside under ANY circumstances",
                     "Even indoors, use HEPA air purifiers",
                     "Tape windows and door gaps if possible",
@@ -284,7 +284,7 @@ class HealthAdvisor:
             rec = category_recs["general"]
         else:
             rec = {
-                "icon": "ℹ️",
+                "icon": "",
                 "message": f"AQI {aqi_value:.0f} - {health_impact}",
                 "actions": ["Monitor air quality updates"]
             }
@@ -342,18 +342,18 @@ class HealthAdvisor:
             "safe_days": safe_days,
         }
         
-        # Overall recommendation
+        # Overall recommendation - clean text labels
         if min_aqi > threshold["dangerous"]:
-            result["recommendation"] = "❌ NOT RECOMMENDED - Postpone or move indoors"
+            result["recommendation"] = "NOT RECOMMENDED - Postpone or move indoors"
             result["status"] = "dangerous"
         elif avg_aqi > threshold["risky"]:
-            result["recommendation"] = "⚠️ RISKY - Consider alternatives or reschedule"
+            result["recommendation"] = "RISKY - Consider alternatives or reschedule"
             result["status"] = "risky"
         elif len(safe_days) > 0:
-            result["recommendation"] = f"✅ SAFE on day(s): {', '.join([f'Day {d+1}' for d in safe_days])}"
+            result["recommendation"] = f"SAFE on day(s): {', '.join([f'Day {d+1}' for d in safe_days])}"
             result["status"] = "safe"
         else:
-            result["recommendation"] = "⚠️ CAUTION - Proceed with protective measures (N95 mask)"
+            result["recommendation"] = "CAUTION - Proceed with protective measures (N95 mask)"
             result["status"] = "caution"
         
         return result
@@ -375,17 +375,17 @@ if __name__ == "__main__":
     ]
     
     for scenario in test_scenarios:
-        print(f"\n{'─'*60}")
+        print(f"\n{'-'*60}")
         print(f"Scenario: {scenario['desc']}")
         print(f"AQI: {scenario['aqi']}, Profile: {scenario['profile']}")
-        print(f"{'─'*60}")
+        print(f"{'-'*60}")
         
         rec = HealthAdvisor.get_recommendation(scenario['aqi'], scenario['profile'])
         
-        print(f"{rec['icon']}  {rec['message']}")
+        print(f"  {rec['message']}")
         print(f"\nRecommended Actions:")
         for action in rec['actions']:
-            print(f"   • {action}")
+            print(f"   - {action}")
     
     # Test activity guidance
     print(f"\n{'='*60}")

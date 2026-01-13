@@ -33,6 +33,7 @@ from indian_cities_config import (
 )
 from health_advisor import HealthAdvisor
 from policy_impact_analyzer import PolicyImpactAnalyzer
+from location_detector import find_nearest_city, CITY_COORDINATES
 
 # Try to import real-time AQI clients (OpenWeatherMap primary, Open-Meteo fallback)
 OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")
@@ -51,75 +52,206 @@ except ImportError:
 
 # Page Config
 st.set_page_config(
-    page_title="Air Quality Early Warning System",
-    page_icon="🌍",
+    page_title="Air Quality Monitor",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Enhanced Custom CSS
+# Material Design CSS
 st.markdown("""
     <style>
+    /* Import Google Fonts - Roboto (Material Design default) */
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+    
+    /* Base styling */
     .main {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        background: #fafafa;
+        font-family: 'Roboto', sans-serif;
     }
-    .big-aqi {
-        font-size: 72px;
-        font-weight: bold;
-        text-align: center;
-        padding: 20px;
-        border-radius: 15px;
-        margin: 10px 0;
-    }
-    .health-alert {
-        padding: 20px;
-        border-left: 5px solid;
+    
+    /* Material Design Cards */
+    .md-card {
+        background: #ffffff;
         border-radius: 8px;
-        margin: 15px 0;
-        background-color: #1e293b;
-        color: #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+        padding: 24px;
+        margin: 16px 0;
+        transition: box-shadow 0.2s ease;
     }
-    .health-alert h3 {
-        color: #f1f5f9;
-        margin-bottom: 10px;
+    
+    .md-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
     }
-    .health-alert p {
-        color: #cbd5e1;
+    
+    /* AQI Display - Clean Material Style */
+    .aqi-display {
+        font-size: 64px;
+        font-weight: 300;
+        text-align: center;
+        padding: 32px;
+        border-radius: 8px;
+        margin: 16px 0;
+        font-family: 'Roboto', sans-serif;
     }
-    .health-alert ul {
-        color: #e2e8f0;
+    
+    .aqi-label {
+        font-size: 14px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 8px;
     }
-    .health-alert li {
-        color: #f1f5f9;
-        margin: 5px 0;
+    
+    /* Health Alert - Material Design */
+    .health-card {
+        padding: 24px;
+        border-radius: 8px;
+        margin: 16px 0;
+        background: #ffffff;
+        border-left: 4px solid;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
-    .health-alert strong {
-        color: #60a5fa;
+    
+    .health-card h3 {
+        font-weight: 500;
+        font-size: 18px;
+        margin-bottom: 12px;
+        color: #212121;
     }
-    .city-stat {
-        background: white;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        margin: 10px 0;
+    
+    .health-card p {
+        color: #616161;
+        font-size: 14px;
+        line-height: 1.6;
     }
-    /* Light mode override */
-    @media (prefers-color-scheme: light) {
-        .health-alert {
-            background-color: #f8fafc;
-            color: #1e293b;
+    
+    .health-card ul {
+        margin: 12px 0;
+        padding-left: 20px;
+    }
+    
+    .health-card li {
+        color: #424242;
+        margin: 8px 0;
+        font-size: 14px;
+    }
+    
+    /* Section headers */
+    .section-title {
+        font-size: 20px;
+        font-weight: 500;
+        color: #212121;
+        margin: 24px 0 16px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    /* City cards for comparison */
+    .city-card {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .city-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .city-card.current {
+        border: 2px solid #1976d2;
+    }
+    
+    .city-name {
+        font-size: 16px;
+        font-weight: 500;
+        color: #212121;
+        margin-bottom: 8px;
+    }
+    
+    .city-aqi {
+        font-size: 36px;
+        font-weight: 300;
+    }
+    
+    .city-label {
+        font-size: 12px;
+        color: #757575;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Ranking list item */
+    .rank-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        margin: 4px 0;
+        background: #ffffff;
+        border-radius: 4px;
+        transition: background 0.15s ease;
+    }
+    
+    .rank-item:hover {
+        background: #f5f5f5;
+    }
+    
+    .rank-item.current {
+        background: #e3f2fd;
+        border-left: 3px solid #1976d2;
+    }
+    
+    /* Chips/Tags */
+    .md-chip {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+        margin: 4px;
+    }
+    
+    /* Status colors - Material palette */
+    .status-good { background: #e8f5e9; color: #2e7d32; }
+    .status-moderate { background: #fff8e1; color: #f57f17; }
+    .status-poor { background: #fff3e0; color: #e65100; }
+    .status-severe { background: #ffebee; color: #c62828; }
+    
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+        .md-card, .city-card, .rank-item {
+            background: #1e1e1e;
+            color: #e0e0e0;
         }
-        .health-alert h3 {
-            color: #0f172a;
+        .health-card {
+            background: #1e1e1e;
         }
-        .health-alert p {
-            color: #334155;
+        .health-card h3 {
+            color: #ffffff;
         }
-        .health-alert ul, .health-alert li {
-            color: #1e293b;
+        .health-card p, .health-card li {
+            color: #b0b0b0;
         }
-        .health-alert strong {
-            color: #2563eb;
+        .section-title {
+            color: #ffffff;
+            border-bottom-color: #424242;
+        }
+        .city-name {
+            color: #ffffff;
+        }
+        .city-label {
+            color: #9e9e9e;
+        }
+        .rank-item:hover {
+            background: #2c2c2c;
+        }
+        .rank-item.current {
+            background: #1a237e;
         }
     }
     </style>
@@ -283,46 +415,81 @@ def generate_fallback_forecast(city_name, df_historical, days_ahead=7):
 
 
 def main():
-    st.title("🌍 Air Quality Early Warning & Protection System")
-    st.markdown("### *Data-Driven Health Decisions for Indians*")
+    st.title("Air Quality Monitor")
+    st.caption("Real-time air quality tracking and health recommendations for India")
     
     # Load data
     df = load_historical_data()
     
     if df.empty:
-        st.error("❌ No data available. Please run `python src/generate_data.py` first.")
+        st.error("No data available. Please run `python src/generate_data.py` first.")
         return
     
     available_cities = sorted(df['City'].unique())
     
     # ===== SIDEBAR =====
     with st.sidebar:
-        st.header("⚙️ Configuration")
+        st.header("Settings")
         
-        # City selection
+        # Auto-detect location on first load using IP geolocation
+        if 'auto_detected_city' not in st.session_state:
+            try:
+                import requests
+                # Use ipapi.co free API for IP-based location
+                response = requests.get('https://ipapi.co/json/', timeout=5)
+                if response.status_code == 200:
+                    ip_data = response.json()
+                    detected_city_name = ip_data.get('city', '')
+                    
+                    # Match to available cities
+                    matched_city = None
+                    for city in available_cities:
+                        if city.lower() in detected_city_name.lower() or detected_city_name.lower() in city.lower():
+                            matched_city = city
+                            break
+                    
+                    # If no match, find nearest using lat/lon
+                    if not matched_city and ip_data.get('latitude') and ip_data.get('longitude'):
+                        matched_city, _ = find_nearest_city(
+                            ip_data.get('latitude'), 
+                            ip_data.get('longitude'), 
+                            available_cities
+                        )
+                    
+                    st.session_state.auto_detected_city = matched_city or 'Delhi'
+                else:
+                    st.session_state.auto_detected_city = 'Delhi'
+            except:
+                st.session_state.auto_detected_city = 'Delhi'
+        
+        # Location Selection - Simple dropdown with auto-detected default
+        st.subheader("Location")
+        
         selected_city = st.selectbox(
-            "🏙️ Select City",
+            "Your City",
             available_cities,
-            index=available_cities.index('Delhi') if 'Delhi' in available_cities else 0
+            index=available_cities.index(st.session_state.auto_detected_city) if st.session_state.auto_detected_city in available_cities else 0,
+            key="city_selector",
+            help="Auto-detected based on your location. Change if needed."
         )
         
         st.markdown("---")
         
         # User Profile Selection
-        st.subheader("👤 Your Profile")
+        st.subheader("Profile")
         user_profile = st.selectbox(
-            "Select your profile for personalized advice:",
+            "Select your profile:",
             options=list(HealthAdvisor.PROFILES.keys()),
             format_func=lambda x: HealthAdvisor.PROFILES[x]['name']
         )
         
         profile_desc = HealthAdvisor.PROFILES[user_profile]['description']
-        st.caption(f"ℹ️ {profile_desc}")
+        st.caption(profile_desc)
         
         st.markdown("---")
         
         # Planned Activity
-        st.subheader("📅 Planned Activity")
+        st.subheader("Activity")
         activity_options = ["jog", "cycling", "outdoor_event", "commute", "children_play", "window_open", "Other (Custom)"]
         selected_activity = st.selectbox(
             "What are you planning?",
@@ -330,19 +497,19 @@ def main():
         )
         
         if selected_activity == "Other (Custom)":
-            planned_activity = st.text_input("✍️ Enter your specific activity:", placeholder="e.g., yoga in park, painting fence, marathon training")
+            planned_activity = st.text_input("Enter your activity:", placeholder="e.g., yoga in park")
             if not planned_activity:
-                planned_activity = "general_outdoor_activity" # Default fallback
+                planned_activity = "general_outdoor_activity"
         else:
             planned_activity = selected_activity
         
         st.markdown("---")
-        st.caption("💡 **Purpose**: This tool helps you make informed health decisions based on air quality forecasts.")
+        st.caption("Health decisions based on air quality forecasts")
     
     # ===== MAIN CONTENT =====
     
     # Real-Time AQI Section
-    st.markdown(f"## 📡 Current Air Quality: **{selected_city}**")
+    st.markdown(f"### Current Air Quality in {selected_city}")
     
     col1, col2 = st.columns([2, 1])
     
@@ -351,7 +518,7 @@ def main():
     
     # Safety check for empty data
     if city_data.empty:
-        st.warning(f"⚠️ No historical data available for {selected_city} in the dataset.")
+        st.warning(f"No historical data available for {selected_city} in the dataset.")
         st.info("Try selecting a different city from the dropdown.")
         return
     
@@ -364,7 +531,7 @@ def main():
             current_aqi = realtime_data['aqi']
             category = realtime_data.get('category', 'Unknown')
             color = realtime_data.get('color', '#888888')
-            data_source = f"🟢 LIVE from Open-Meteo ({realtime_data.get('timestamp', 'now')[:16]})"
+            data_source = f"Live data ({realtime_data.get('timestamp', 'now')[:16]})"
             pm25_val = realtime_data.get('pm25', 'N/A')
             pm10_val = realtime_data.get('pm10', 'N/A')
             no2_val = realtime_data.get('no2', 'N/A')
@@ -373,33 +540,48 @@ def main():
             latest_data = city_data.iloc[-1]
             current_aqi = latest_data['AQI']
             category, color, health_impact = get_aqi_category(current_aqi)
-            data_source = f"📊 Historical data ({latest_data['Date'].strftime('%Y-%m-%d')})"
+            data_source = f"Historical data ({latest_data['Date'].strftime('%Y-%m-%d')})"
             pm25_val = f"{latest_data['PM2.5']:.1f}"
             pm10_val = f"{latest_data['PM10']:.1f}"
             no2_val = f"{latest_data['NO2']:.1f}"
         
-        # Display AQI
+        # Display AQI with Material Design
         st.markdown(f"""
-        <div class="big-aqi" style="background-color: {color}; color: white;">
+        <div class="aqi-display" style="background-color: {color}; color: white;">
             {int(current_aqi)}
-            <div style="font-size: 24px; margin-top: 10px;">{category}</div>
+            <div class="aqi-label" style="color: rgba(255,255,255,0.9);">{category}</div>
         </div>
-        <div style="text-align: center; font-size: 12px; color: #666; margin-top: 5px;">
+        <div style="text-align: center; font-size: 12px; color: #757575; margin-top: 8px;">
             {data_source}
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
-        st.metric("PM2.5", f"{pm25_val} µg/m³" if pm25_val != 'N/A' else "N/A")
-        st.metric("PM10", f"{pm10_val} µg/m³" if pm10_val != 'N/A' else "N/A")
-        st.metric("NO₂", f"{no2_val} µg/m³" if no2_val != 'N/A' else "N/A")
+        st.metric(
+            "PM2.5", 
+            f"{pm25_val} µg/m³" if pm25_val != 'N/A' else "N/A",
+            help="Fine particulate matter smaller than 2.5 micrometers. Can penetrate deep into lungs and bloodstream. Major cause of respiratory and cardiovascular diseases."
+        )
+        st.metric(
+            "PM10", 
+            f"{pm10_val} µg/m³" if pm10_val != 'N/A' else "N/A",
+            help="Particulate matter smaller than 10 micrometers. Includes dust, pollen, and mold. Can irritate eyes, nose, and throat."
+        )
+        st.metric(
+            "NO₂", 
+            f"{no2_val} µg/m³" if no2_val != 'N/A' else "N/A",
+            help="Nitrogen Dioxide from vehicle exhaust and power plants. Causes respiratory inflammation and worsens asthma."
+        )
     
     # Personalized Health Recommendation
     recommendation = HealthAdvisor.get_recommendation(current_aqi, user_profile)
     
+    # Remove emoji from recommendation message
+    rec_message = recommendation['message']
+    
     st.markdown(f"""
-    <div class="health-alert" style="border-color: {recommendation['color']};">
-        <h3>{recommendation['icon']} {recommendation['message']}</h3>
+    <div class="health-card" style="border-color: {recommendation['color']};">
+        <h3>{rec_message}</h3>
         <p><strong>Health Impact:</strong> {recommendation['health_impact']}</p>
         <p><strong>Recommended Actions:</strong></p>
         <ul>
@@ -409,8 +591,8 @@ def main():
     """, unsafe_allow_html=True)
     
     # Dynamic Activity Suggestions (Gemini-powered)
-    st.markdown("### 🎯 Smart Activity Suggestions")
-    st.caption("*AI-powered recommendations based on current air quality*")
+    st.markdown("### Activity Suggestions")
+    st.caption("AI-powered recommendations based on current air quality")
     
     try:
         from gemini_advisor import GeminiHealthAdvisor
@@ -419,7 +601,7 @@ def main():
         # Cache the suggestions in session state to avoid repeated API calls
         cache_key = f"suggestions_{selected_city}_{int(current_aqi)}_{user_profile}"
         
-        if cache_key not in st.session_state or st.button("🔄 Refresh Suggestions", key="refresh_suggestions"):
+        if cache_key not in st.session_state or st.button("Refresh", key="refresh_suggestions"):
             with st.spinner("Getting AI suggestions..."):
                 advisor = GeminiHealthAdvisor(GEMINI_API_KEY)
                 st.session_state[cache_key] = advisor.get_dynamic_activity_suggestions(
@@ -431,68 +613,124 @@ def main():
         
         suggestions_data = st.session_state[cache_key]
         
-        # Display activity cards in a grid
+        # Display activity cards in a grid with Material Design
         cols = st.columns(4)
-        safety_colors = {"safe": "#22c55e", "caution": "#f59e0b", "avoid": "#ef4444"}
+        safety_colors = {"safe": "#4caf50", "caution": "#ff9800", "avoid": "#f44336"}
         
         for i, sugg in enumerate(suggestions_data.get("suggestions", [])[:4]):
             with cols[i]:
                 safety = sugg.get("safety", "caution")
-                color = safety_colors.get(safety, "#888888")
+                color = safety_colors.get(safety, "#757575")
                 st.markdown(f"""
-                <div style="
-                    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-                    padding: 15px;
-                    border-radius: 12px;
-                    border-left: 4px solid {color};
-                    min-height: 120px;
-                    margin-bottom: 10px;
-                ">
-                    <div style="font-size: 28px; text-align: center;">{sugg.get('icon', '🎯')}</div>
-                    <div style="font-weight: bold; color: white; text-align: center; margin: 8px 0;">
-                        {sugg.get('activity', 'Activity')}
-                    </div>
-                    <div style="font-size: 11px; color: #94a3b8; text-align: center;">
+                <div class="city-card" style="border-left: 4px solid {color};">
+                    <div class="city-name">{sugg.get('activity', 'Activity')}</div>
+                    <div style="font-size: 13px; color: #616161; margin: 8px 0;">
                         {sugg.get('tip', '')}
                     </div>
-                    <div style="
-                        background: {color}20;
-                        color: {color};
-                        font-size: 10px;
-                        padding: 2px 8px;
-                        border-radius: 10px;
-                        text-align: center;
-                        margin-top: 8px;
-                        text-transform: uppercase;
-                    ">{safety}</div>
+                    <div class="md-chip" style="background: {color}20; color: {color};">
+                        {safety.upper()}
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
         
         # Best time and general tip
         col_time, col_tip = st.columns(2)
         with col_time:
-            st.info(f"⏰ **Best Time:** {suggestions_data.get('best_time', 'Check forecast')}")
+            st.info(f"**Best Time:** {suggestions_data.get('best_time', 'Check forecast')}")
         with col_tip:
-            st.success(f"💡 **Today's Tip:** {suggestions_data.get('general_tip', 'Stay healthy!')}")
+            st.success(f"**Tip:** {suggestions_data.get('general_tip', 'Stay healthy!')}")
             
     except Exception as e:
         # Fallback to static suggestions if Gemini fails
         st.warning("AI suggestions unavailable. Showing default recommendations.")
         if current_aqi > 200:
-            st.info("🏠 **Recommendation:** Stay indoors and use air purifiers. Wear N95 mask if going outside.")
+            st.info("**Recommendation:** Stay indoors and use air purifiers.")
         else:
-            st.info("🌤️ **Recommendation:** Outdoor activities safe with normal precautions.")
+            st.info("**Recommendation:** Outdoor activities safe with normal precautions.")
+    
+    # ===== PROTECTION IMPACT SECTION =====
+    # Show real-world effect of precautions to educate users
+    if current_aqi > 100:
+        st.markdown("### Protection Impact")
+        st.caption("How precautions reduce your actual pollution exposure")
+        
+        # Calculate effective indoor AQI with air purifier
+        # HEPA air purifiers reduce PM2.5 by 70-90%
+        purifier_reduction = 0.80  # 80% reduction
+        indoor_with_purifier = max(current_aqi * (1 - purifier_reduction), 20)
+        
+        # N95 mask reduces PM2.5 by 95% when properly fitted
+        mask_reduction = 0.95
+        effective_with_mask = max(current_aqi * (1 - mask_reduction), 10)
+        
+        # Get categories for comparison
+        def get_simple_category(aqi):
+            if aqi <= 50: return "Good", "#4caf50"
+            elif aqi <= 100: return "Satisfactory", "#8bc34a"
+            elif aqi <= 200: return "Moderate", "#ff9800"
+            elif aqi <= 300: return "Poor", "#ff5722"
+            else: return "Severe", "#f44336"
+        
+        outdoor_cat, outdoor_color = get_simple_category(current_aqi)
+        purifier_cat, purifier_color = get_simple_category(indoor_with_purifier)
+        mask_cat, mask_color = get_simple_category(effective_with_mask)
+        
+        # Display comparison cards
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown(f"""
+            <div style="background: #ffebee; padding: 16px; border-radius: 8px; text-align: center; border: 2px solid {outdoor_color};">
+                <div style="font-size: 12px; color: #757575; margin-bottom: 4px;">OUTDOOR (No Protection)</div>
+                <div style="font-size: 32px; font-weight: bold; color: {outdoor_color};">{int(current_aqi)}</div>
+                <div style="font-size: 14px; color: {outdoor_color}; font-weight: 500;">{outdoor_cat}</div>
+                <div style="font-size: 11px; color: #9e9e9e; margin-top: 8px;">Direct exposure to pollution</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div style="background: #e8f5e9; padding: 16px; border-radius: 8px; text-align: center; border: 2px solid {purifier_color};">
+                <div style="font-size: 12px; color: #757575; margin-bottom: 4px;">INDOOR + AIR PURIFIER</div>
+                <div style="font-size: 32px; font-weight: bold; color: {purifier_color};">{int(indoor_with_purifier)}</div>
+                <div style="font-size: 14px; color: {purifier_color}; font-weight: 500;">{purifier_cat}</div>
+                <div style="font-size: 11px; color: #4caf50; margin-top: 8px;">80% reduction with HEPA filter</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown(f"""
+            <div style="background: #e3f2fd; padding: 16px; border-radius: 8px; text-align: center; border: 2px solid {mask_color};">
+                <div style="font-size: 12px; color: #757575; margin-bottom: 4px;">OUTDOOR + N95 MASK</div>
+                <div style="font-size: 32px; font-weight: bold; color: {mask_color};">{int(effective_with_mask)}</div>
+                <div style="font-size: 14px; color: {mask_color}; font-weight: 500;">{mask_cat}</div>
+                <div style="font-size: 11px; color: #1976d2; margin-top: 8px;">95% filtered with proper fit</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Additional context
+        st.markdown("""
+        <div style="background: #f5f5f5; padding: 12px 16px; border-radius: 8px; margin-top: 12px;">
+            <div style="font-weight: 500; color: #424242; margin-bottom: 8px;">What This Means For You</div>
+            <div style="font-size: 13px; color: #616161; line-height: 1.6;">
+                <strong>HEPA Air Purifier:</strong> Running a quality air purifier at home can reduce indoor PM2.5 by 70-90%. 
+                Keep doors/windows closed for best effect. Clean or replace filters regularly.<br><br>
+                <strong>N95 Mask:</strong> When properly fitted (no gaps around nose/chin), N95 masks filter 95% of fine particles. 
+                Essential when going outside during high pollution days. Replace daily during severe pollution.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     st.markdown("---")
     
     # Tabs for different analysis
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "📈 7-Day Forecast",
-        "📊 Historical Trends",
-        "🏛️ Policy Impact",
-        "🛡️ Insurance & Health Planning",
-        "🗺️ City Comparison",
-        "🤖 AI Health Advisor"
+        "Forecast",
+        "Trends",
+        "Policy Impact",
+        "Health Planning",
+        "Compare Cities",
+        "AI Advisor"
     ])
     
     with tab1:
@@ -542,38 +780,48 @@ def main():
         st.plotly_chart(fig, use_container_width=True)
         
         # Enhanced Activity Guidance Section
-        st.markdown(f"### 🏃 Activity Guidance: *{planned_activity.replace('_', ' ').title()}*")
+        st.markdown(f"### Activity Guidance: {planned_activity.replace('_', ' ').title()}")
         activity_guidance = HealthAdvisor.get_activity_guidance(
             forecast_data['aqi'],
             planned_activity,
             user_profile
         )
         
-        # Status-based styling
+        # Status-based styling - Material Design colors, no emojis
         status_styles = {
-            "safe": {"color": "#22c55e", "bg": "#22c55e20", "icon": "✅"},
-            "caution": {"color": "#f59e0b", "bg": "#f59e0b20", "icon": "⚠️"},
-            "risky": {"color": "#f97316", "bg": "#f9731620", "icon": "⚠️"},
-            "dangerous": {"color": "#ef4444", "bg": "#ef444420", "icon": "❌"}
+            "safe": {"color": "#4caf50", "bg": "#e8f5e9", "label": "SAFE"},
+            "caution": {"color": "#ff9800", "bg": "#fff3e0", "label": "CAUTION"},
+            "risky": {"color": "#ff5722", "bg": "#fbe9e7", "label": "RISKY"},
+            "dangerous": {"color": "#f44336", "bg": "#ffebee", "label": "NOT RECOMMENDED"}
         }
         status = activity_guidance.get('status', 'caution')
         style = status_styles.get(status, status_styles['caution'])
         
-        # Main recommendation card
+        # Main recommendation card - Material Design
         st.markdown(f"""
         <div style="
             background: {style['bg']};
             border-left: 4px solid {style['color']};
-            padding: 15px 20px;
+            padding: 16px 20px;
             border-radius: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
         ">
-            <div style="font-size: 18px; font-weight: bold; color: {style['color']};">
-                {style['icon']} {activity_guidance['recommendation']}
+            <div style="
+                display: inline-block;
+                background: {style['color']};
+                color: white;
+                font-size: 11px;
+                font-weight: 500;
+                padding: 4px 10px;
+                border-radius: 4px;
+                margin-bottom: 8px;
+            ">{style['label']}</div>
+            <div style="font-size: 16px; font-weight: 500; color: #212121; margin-bottom: 12px;">
+                {activity_guidance['recommendation']}
             </div>
-            <div style="margin-top: 10px; display: flex; gap: 20px; flex-wrap: wrap;">
-                <span>📊 <strong>AQI Range:</strong> {activity_guidance['min_aqi']:.0f} - {activity_guidance['max_aqi']:.0f}</span>
-                <span>📈 <strong>Average:</strong> {activity_guidance['avg_aqi']:.1f}</span>
+            <div style="display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px; color: #616161;">
+                <span><strong>AQI Range:</strong> {activity_guidance['min_aqi']:.0f} - {activity_guidance['max_aqi']:.0f}</span>
+                <span><strong>Average:</strong> {activity_guidance['avg_aqi']:.1f}</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -606,7 +854,10 @@ Provide response in this exact JSON format (no markdown):
 }}
 Be specific to Indian context. Keep all values concise (under 50 chars each)."""
 
-                    response = advisor.model.generate_content(prompt)
+                    response = advisor.client.models.generate_content(
+                        model=advisor.model_name,
+                        contents=prompt
+                    )
                     import json
                     text = response.text.strip()
                     if text.startswith("```"):
@@ -621,56 +872,100 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("#### ⏰ Timing & Duration")
+                st.markdown("#### Timing & Duration")
                 st.markdown(f"""
-                <div style="background: #1e293b; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
-                    <div style="color: #94a3b8; font-size: 12px;">Best Time</div>
-                    <div style="color: white; font-weight: bold;">{guidance_data.get('best_timing', 'Early morning')}</div>
+                <div style="background: #f5f5f5; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+                    <div style="color: #757575; font-size: 12px;">Best Time</div>
+                    <div style="color: #212121; font-weight: 500;">{guidance_data.get('best_timing', 'Early morning')}</div>
                 </div>
-                <div style="background: #1e293b; padding: 12px; border-radius: 8px;">
-                    <div style="color: #94a3b8; font-size: 12px;">Duration Advice</div>
-                    <div style="color: white; font-weight: bold;">{guidance_data.get('duration_advice', 'Limit outdoor time')}</div>
+                <div style="background: #f5f5f5; padding: 12px; border-radius: 8px;">
+                    <div style="color: #757575; font-size: 12px;">Duration Advice</div>
+                    <div style="color: #212121; font-weight: 500;">{guidance_data.get('duration_advice', 'Limit outdoor time')}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                st.markdown("#### 📈 7-Day Forecast Insight")
+                st.markdown("#### Forecast Insight")
                 st.info(guidance_data.get('forecast_insight', 'AQI levels remain elevated throughout the week.'))
             
             with col2:
-                st.markdown("#### 🔄 Better Alternatives")
+                st.markdown("#### Better Alternatives")
                 for alt in guidance_data.get('alternatives', ['Indoor gym', 'Home workout', 'Yoga'])[:3]:
                     st.markdown(f"""
-                    <div style="background: #16a34a20; padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid #16a34a;">
-                        <span style="color: white;">✓ {alt}</span>
+                    <div style="background: #e8f5e9; padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid #4caf50;">
+                        <span style="color: #2e7d32;">✓ {alt}</span>
                     </div>
                     """, unsafe_allow_html=True)
                 
-                st.markdown("#### 🛡️ Safety Tips")
+                st.markdown("#### Safety Tips")
                 for tip in guidance_data.get('safety_tips', ['Wear N95 mask', 'Stay hydrated'])[:2]:
-                    st.markdown(f"• {tip}")
+                    st.markdown(f"- {tip}")
                     
         except Exception as e:
-            # Fallback guidance
-            st.markdown("#### 💡 Quick Tips")
+            # Activity-specific fallback guidance
+            activity_alternatives = {
+                "jog": ["Treadmill running at gym", "Indoor cycling", "Jump rope at home"],
+                "cycling": ["Stationary bike", "Indoor spinning class", "Swimming"],
+                "outdoor_event": ["Move event indoors", "Virtual event option", "Reschedule to better AQI day"],
+                "commute": ["Work from home if possible", "Use AC vehicle with recirculation", "Avoid peak traffic hours"],
+                "children_play": ["Indoor play area", "Board games at home", "Kids fitness videos"],
+                "window_open": ["Use air purifier instead", "Ventilate during low-traffic hours", "Use exhaust fans in kitchen/bathroom"]
+            }
+            
+            activity_tips = {
+                "jog": ["Hydrate well before and after", "Monitor breathing difficulty"],
+                "cycling": ["Avoid main roads with heavy traffic", "Wear fitted N95 mask"],
+                "outdoor_event": ["Provide masks for attendees", "Set up air purifiers if indoors"],
+                "commute": ["Keep car windows up, AC on recirculate", "Change route to avoid congestion"],
+                "children_play": ["Children are more vulnerable - prioritize indoor play", "Watch for coughing or wheezing"],
+                "window_open": ["Seal gaps around windows and doors", "Run purifier on high when cooking"]
+            }
+            
+            alternatives = activity_alternatives.get(planned_activity, ["Indoor gym", "Home yoga", "Swimming"])
+            tips = activity_tips.get(planned_activity, ["Wear N95 mask outdoors", "Stay hydrated"])
+            
+            st.markdown("#### Quick Tips")
             if status == "dangerous":
-                st.error("🏠 **Strongly advised to stay indoors.** If you must go outside, wear an N95 mask and limit exposure to under 15 minutes.")
-                st.markdown("**Alternatives:** Indoor gym, home yoga, treadmill running")
+                st.error(f"**Strongly advised to stay indoors.** If you must go outside, wear an N95 mask and limit exposure to under 15 minutes.")
             elif status == "risky":
-                st.warning("⚠️ **Consider postponing or switching to indoor alternatives.** If proceeding, choose early morning (6-7 AM) when pollution is typically lower.")
-                st.markdown("**Alternatives:** Indoor cycling, swimming, gym workout")
+                st.warning(f"**Consider postponing or switching to indoor alternatives.** If proceeding, choose early morning (6-7 AM) when pollution is typically lower.")
             else:
-                st.success("✅ **Conditions are acceptable.** Monitor how you feel and reduce intensity if you experience any discomfort.")
-                st.markdown("**Best time:** Early morning or late evening")
+                st.success("**Conditions are acceptable.** Monitor how you feel and reduce intensity if you experience any discomfort.")
+            
+            st.markdown(f"**Alternatives for {planned_activity.replace('_', ' ')}:** {', '.join(alternatives)}")
+            st.markdown("**Safety Tips:**")
+            for tip in tips:
+                st.markdown(f"- {tip}")
     
     with tab2:
         st.subheader("Historical Pollution Trends")
         
-        # Time range selector
-        time_range = st.select_slider(
-            "Select time range:",
-            options=['Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last Year', 'All Time'],
-            value='Last 6 Months'
-        )
+        # Controls row
+        col_time, col_metric = st.columns([2, 1])
+        
+        with col_time:
+            time_range = st.select_slider(
+                "Time Range",
+                options=['Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last Year', 'All Time'],
+                value='Last 6 Months'
+            )
+        
+        with col_metric:
+            # Pollutant selector
+            available_metrics = {
+                'AQI': {'color': '#1976d2', 'unit': ''},
+                'PM2.5': {'color': '#f44336', 'unit': 'µg/m³'},
+                'PM10': {'color': '#ff9800', 'unit': 'µg/m³'},
+                'NO2': {'color': '#9c27b0', 'unit': 'µg/m³'},
+                'SO2': {'color': '#4caf50', 'unit': 'µg/m³'},
+                'CO': {'color': '#795548', 'unit': 'mg/m³'}
+            }
+            
+            selected_metrics = st.multiselect(
+                "Pollutants to Display",
+                options=list(available_metrics.keys()),
+                default=['AQI'],
+                help="Select one or more pollutants to compare"
+            )
         
         # Filter data based on range
         if time_range == 'Last 30 Days':
@@ -684,34 +979,80 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
         else:
             filtered_data = city_data
         
-        # Plot historical data
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=filtered_data['Date'],
-            y=filtered_data['AQI'],
-            mode='lines',
-            name='AQI',
-            line=dict(color='#3b82f6', width=2)
-        ))
-        
-        fig.update_layout(
-            title=f"AQI Trend - {selected_city}",
-            xaxis_title="Date",
-            yaxis_title="AQI",
-            height=400
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Statistics
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Average AQI", f"{filtered_data['AQI'].mean():.1f}")
-        col2.metric("Max AQI", f"{filtered_data['AQI'].max():.1f}")
-        col3.metric("Days > 200", f"{(filtered_data['AQI'] > 200).sum()}")
-        col4.metric("Days > 300", f"{(filtered_data['AQI'] > 300).sum()}")
+        # Plot historical data with selected metrics
+        if selected_metrics:
+            fig = go.Figure()
+            
+            for metric in selected_metrics:
+                if metric in filtered_data.columns:
+                    fig.add_trace(go.Scatter(
+                        x=filtered_data['Date'],
+                        y=filtered_data[metric],
+                        mode='lines',
+                        name=metric,
+                        line=dict(color=available_metrics[metric]['color'], width=2)
+                    ))
+            
+            # Update layout
+            y_axis_title = "Value"
+            if len(selected_metrics) == 1:
+                metric = selected_metrics[0]
+                unit = available_metrics[metric]['unit']
+                y_axis_title = f"{metric} ({unit})" if unit else metric
+            
+            fig.update_layout(
+                title=f"Pollution Trends - {selected_city}",
+                xaxis_title="Date",
+                yaxis_title=y_axis_title,
+                height=400,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                hovermode='x unified'
+            )
+            
+            # Add AQI threshold lines if AQI is selected
+            if 'AQI' in selected_metrics and len(selected_metrics) == 1:
+                fig.add_hline(y=100, line_dash="dash", line_color="#4caf50", annotation_text="Satisfactory")
+                fig.add_hline(y=200, line_dash="dash", line_color="#ff9800", annotation_text="Moderate")
+                fig.add_hline(y=300, line_dash="dash", line_color="#f44336", annotation_text="Poor")
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Statistics for selected metrics
+            st.markdown("### Statistics")
+            stat_cols = st.columns(len(selected_metrics))
+            
+            for i, metric in enumerate(selected_metrics):
+                if metric in filtered_data.columns:
+                    with stat_cols[i]:
+                        unit = available_metrics[metric]['unit']
+                        avg_val = filtered_data[metric].mean()
+                        max_val = filtered_data[metric].max()
+                        min_val = filtered_data[metric].min()
+                        
+                        st.markdown(f"""
+                        <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; border-left: 4px solid {available_metrics[metric]['color']};">
+                            <div style="font-size: 14px; font-weight: 500; color: #424242; margin-bottom: 8px;">{metric}</div>
+                            <div style="display: flex; justify-content: space-between; font-size: 13px; color: #616161;">
+                                <span>Avg: <strong>{avg_val:.1f}</strong></span>
+                                <span>Max: <strong>{max_val:.1f}</strong></span>
+                                <span>Min: <strong>{min_val:.1f}</strong></span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+            
+            # Additional insights for AQI
+            if 'AQI' in selected_metrics:
+                st.markdown("### Air Quality Summary")
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("Average AQI", f"{filtered_data['AQI'].mean():.1f}")
+                col2.metric("Peak AQI", f"{filtered_data['AQI'].max():.1f}")
+                col3.metric("Days > 200 (Poor)", f"{(filtered_data['AQI'] > 200).sum()}")
+                col4.metric("Days > 300 (Very Poor)", f"{(filtered_data['AQI'] > 300).sum()}")
+        else:
+            st.info("Select at least one pollutant to view the trend.")
     
     with tab3:
-        st.subheader("🏛️ Policy Impact Analysis")
+        st.subheader("Policy Impact Analysis")
         st.markdown("*Did government policies actually reduce pollution? Let's look at the data.*")
         
         analyzer = PolicyImpactAnalyzer()
@@ -719,7 +1060,7 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
         # Odd-Even Analysis - Only for NCR cities
         if selected_city in ['Delhi', 'Noida', 'Gurgaon', 'Ghaziabad', 'Faridabad']:
             st.markdown("---")
-            st.markdown("### 🚗 Odd-Even Vehicle Rationing Scheme")
+            st.markdown("### Odd-Even Vehicle Rationing Scheme")
             st.markdown("""
             **What is it?** On odd dates, only odd-numbered vehicles can drive. On even dates, only even-numbered vehicles.
             The goal is to reduce traffic by 50% and improve air quality.
@@ -729,9 +1070,9 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
             
             if not odd_even_results.empty:
                 for idx, row in odd_even_results.iterrows():
-                    with st.expander(f"📅 {row['period']}", expanded=idx==len(odd_even_results)-1):
+                    with st.expander(f"{row['period']}", expanded=idx==len(odd_even_results)-1):
                         # Simple visual comparison
-                        st.markdown("#### 📊 What Happened to Air Quality?")
+                        st.markdown("#### Results")
                         
                         col1, col2, col3 = st.columns(3)
                         col1.metric("Before Scheme", f"AQI {row['before_aqi']:.0f}")
@@ -742,18 +1083,18 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
                         # Plain language explanation
                         change = row['pct_change_during']
                         
-                        st.markdown("#### 🤔 Did It Work?")
+                        st.markdown("#### Analysis")
                         
                         if change < -10 and row['statistically_significant']:
                             st.success(f"""
-                            ✅ **YES - Noticeable Improvement!**
+                            **Noticeable Improvement**
                             
                             AQI dropped by **{abs(change):.0f}%** during the scheme. 
                             This is a meaningful reduction that likely helped reduce health problems.
                             """)
                         elif change < -5:
                             st.warning(f"""
-                            ⚠️ **MINOR Effect**
+                            **Minor Effect**
                             
                             AQI dropped by only **{abs(change):.0f}%**. Here's the reality:
                             - Weather changes (wind, rain) often cause **20-30%** swings naturally
@@ -762,7 +1103,7 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
                             """)
                         else:
                             st.error(f"""
-                            ❌ **NO Significant Effect**
+                            **No Significant Effect**
                             
                             AQI changed by only **{change:+.0f}%** - essentially flat or worse.
                             Possible reasons:
@@ -771,9 +1112,9 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
                             - Weather conditions may have worsened air quality anyway
                             """)
                         
-                        st.markdown("#### 💡 What This Means")
+                        st.markdown("#### Key Insight")
                         st.info("""
-                        **Key Insight:** Vehicle restrictions alone have limited impact. 
+                        **Vehicle restrictions alone have limited impact.** 
                         For real improvement, cities need:
                         - Cleaner fuels (electric vehicles, CNG)
                         - Better public transport
@@ -783,12 +1124,12 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
         
         # GRAP Analysis
         st.markdown("---")
-        st.markdown("### 🚨 Emergency Measures (GRAP)")
+        st.markdown("### Emergency Measures (GRAP)")
         st.markdown("""
         **What is GRAP?** When pollution gets very bad, the government takes emergency actions:
-        - 🚧 Construction work stopped
-        - 🏫 Schools closed
-        - 🚗 Trucks banned from entering city
+        - Construction work stopped
+        - Schools closed
+        - Trucks banned from entering city
         """)
         
         grap_results = analyzer.analyze_grap_effectiveness()
@@ -810,23 +1151,23 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
         
         if change < -5:
             st.success(f"""
-            ✅ **GRAP is helping!** Hazardous days reduced by {abs(change):.0f} percentage points.
+            **GRAP is helping!** Hazardous days reduced by {abs(change):.0f} percentage points.
             Fewer emergency hospital visits and respiratory crises during winter.
             """)
         elif change < 0:
             st.warning(f"""
-            ⚠️ **Slight improvement** but not enough. Still {after_pct:.0f}% of winter days are hazardous.
+            **Slight improvement** but not enough. Still {after_pct:.0f}% of winter days are hazardous.
             Emergency measures help, but we need permanent solutions.
             """)
         else:
             st.error(f"""
-            ❌ **No improvement.** Despite emergency measures, pollution hasn't decreased.
+            **No improvement.** Despite emergency measures, pollution hasn't decreased.
             This suggests the problem needs systemic solutions, not just temporary bans.
             """)
         
         # ===== RECENT POLICIES SECTION (2024-2026) - AI-Powered Web Search =====
         st.markdown("---")
-        st.markdown("### 📰 Recent Policies (2024-2026)")
+        st.markdown("### Recent Policies (2024-2026)")
         st.markdown("*Live updates from government sources, CPCB, and NGT orders*")
         
         try:
@@ -896,7 +1237,7 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
             st.error(f"Error fetching policies: {str(e)}")
     
     with tab4:
-        st.subheader("🛡️ Insurance & Health Planning")
+        st.subheader("Insurance & Health Planning")
         st.markdown(f"*Plan your healthcare based on **{selected_city}'s** air quality*")
         
         # Get current AQI for calculations
@@ -904,7 +1245,7 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
         
         # User profile inputs
         st.markdown("---")
-        st.markdown("### 👤 Your Profile")
+        st.markdown("### Your Profile")
         
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -924,7 +1265,7 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
         
         # Section 1: Pollution Health Risk Score
         st.markdown("---")
-        st.markdown("### 📊 Your Pollution Health Risk Score")
+        st.markdown("### Your Pollution Health Risk Score")
         
         try:
             from agents.insurance_advisor import InsurancePlannerAgent
@@ -963,23 +1304,23 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
                 with col2:
                     st.markdown(f"""
                     **Risk Factors:**
-                    - 🏙️ City AQI: **{current_aqi}** ({risk['base_risk']})
-                    - 👤 Age: **{user_age}** {"(higher risk)" if user_age > 60 or user_age < 18 else "(normal)"}
-                    - 💊 Conditions: **{', '.join(conditions) if conditions else "None"}**
+                    - City AQI: **{current_aqi}** ({risk['base_risk']})
+                    - Age: **{user_age}** {"(higher risk)" if user_age > 60 or user_age < 18 else "(normal)"}
+                    - Conditions: **{', '.join(conditions) if conditions else "None"}**
                     """)
                     
                     if risk_score >= 50:
-                        st.warning("⚠️ Your risk level suggests you should prioritize comprehensive health coverage.")
+                        st.warning("Your risk level suggests you should prioritize comprehensive health coverage.")
                     else:
-                        st.success("✅ Your risk level is manageable with standard health coverage.")
+                        st.success("Your risk level is manageable with standard health coverage.")
                 
                 # Section 2: Recommended Health Checkups
                 st.markdown("---")
-                st.markdown("### 💊 Recommended Health Checkups")
+                st.markdown("### Recommended Health Checkups")
                 
                 checkup_cache_key = f"checkups_{selected_city}_{current_aqi}"
                 
-                if st.button("🔍 Get Personalized Checkup Recommendations", key="get_checkups"):
+                if st.button("Get Personalized Checkup Recommendations", key="get_checkups"):
                     with st.spinner("Analyzing your health needs..."):
                         checkups = insurance_agent.get_health_checkup_recommendations(
                             selected_city, current_aqi, 
@@ -997,31 +1338,31 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
                     if annual_tests:
                         st.markdown("**Annual Tests for Pollution Exposure:**")
                         for test in annual_tests[:5]:
-                            with st.expander(f"🩺 {test.get('test_name', 'Test')} - ₹{test.get('approximate_cost_inr', 0)}"):
+                            with st.expander(f"{test.get('test_name', 'Test')} - Rs.{test.get('approximate_cost_inr', 0)}"):
                                 st.write(f"**Purpose:** {test.get('purpose', 'General health')}")
                                 st.write(f"**Frequency:** {test.get('frequency', 'Annual')}")
                         
                         total_cost = checkups.get('total_annual_checkup_cost_inr', 0)
-                        st.info(f"💰 **Estimated Annual Checkup Cost:** ₹{total_cost}")
+                        st.info(f"**Estimated Annual Checkup Cost:** Rs.{total_cost}")
                     
                     # Tips
                     tips = checkups.get('tips', [])
                     if tips:
-                        st.markdown("**💡 Tips:**")
+                        st.markdown("**Tips:**")
                         for tip in tips[:3]:
                             st.write(f"- {tip}")
                 else:
-                    st.info("👆 Click the button to get personalized checkup recommendations")
+                    st.info("Click the button to get personalized checkup recommendations")
                 
                 # Section 3: Insurance Recommendations
                 st.markdown("---")
-                st.markdown("### 🛡️ Insurance Plan Recommendations")
+                st.markdown("### Insurance Plan Recommendations")
                 st.markdown("*AI-powered search for plans that cover pollution-related illness*")
                 
                 insurance_cache_key = f"insurance_{selected_city}_{user_age}_{family_size}"
                 
-                if st.button("🔍 Find Insurance Plans", type="primary", key="find_insurance"):
-                    with st.spinner("🌐 Searching for best insurance plans..."):
+                if st.button("Find Insurance Plans", type="primary", key="find_insurance"):
+                    with st.spinner("Searching for best insurance plans..."):
                         insurance = insurance_agent.get_insurance_recommendations(
                             selected_city, current_aqi, user_age, family_size,
                             [c.lower() for c in conditions]
@@ -1033,50 +1374,50 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
                     
                     # Coverage recommendation
                     coverage = insurance.get('recommended_coverage_amount_lakhs', 10)
-                    st.success(f"💰 **Recommended Coverage:** ₹{coverage} Lakhs for your family of {family_size}")
+                    st.success(f"**Recommended Coverage:** Rs.{coverage} Lakhs for your family of {family_size}")
                     st.caption(insurance.get('coverage_justification', ''))
                     
                     # Insurance plans
                     plans = insurance.get('insurance_plans', [])
                     if plans:
-                        st.markdown("**📋 Recommended Plans:**")
+                        st.markdown("**Recommended Plans:**")
                         
                         for plan in plans[:4]:
-                            with st.expander(f"🏥 {plan.get('provider', 'Provider')} - {plan.get('plan_name', 'Plan')}", expanded=False):
+                            with st.expander(f"{plan.get('provider', 'Provider')} - {plan.get('plan_name', 'Plan')}", expanded=False):
                                 col1, col2 = st.columns(2)
                                 with col1:
-                                    st.markdown(f"**Coverage:** ₹{plan.get('coverage_lakhs', 0)} Lakhs")
-                                    st.markdown(f"**Premium:** ₹{plan.get('annual_premium_inr', 0):,}/year")
+                                    st.markdown(f"**Coverage:** Rs.{plan.get('coverage_lakhs', 0)} Lakhs")
+                                    st.markdown(f"**Premium:** Rs.{plan.get('annual_premium_inr', 0):,}/year")
                                     st.markdown(f"**Waiting Period:** {plan.get('waiting_period_months', 0)} months")
                                 with col2:
                                     st.markdown("**Key Features:**")
                                     for feature in plan.get('key_features', [])[:3]:
-                                        st.write(f"✓ {feature}")
+                                        st.write(f"- {feature}")
                                 
                                 if plan.get('covers_pollution_illness'):
-                                    st.success("✅ Covers pollution-related illness")
+                                    st.success("Covers pollution-related illness")
                                 
                                 st.caption(f"Best for: {plan.get('best_for', 'General use')}")
                     
                     # Add-ons
                     addons = insurance.get('recommended_add_ons', [])
                     if addons:
-                        st.markdown("**🔧 Recommended Add-ons:**")
+                        st.markdown("**Recommended Add-ons:**")
                         for addon in addons[:2]:
-                            st.write(f"- **{addon.get('name')}** (₹{addon.get('approximate_cost_inr', 0)}/year): {addon.get('why_needed', '')}")
+                            st.write(f"- **{addon.get('name')}** (Rs.{addon.get('approximate_cost_inr', 0)}/year): {addon.get('why_needed', '')}")
                     
                     # Tips
                     tips = insurance.get('tips', [])
                     if tips:
-                        st.markdown("**💡 Insurance Tips:**")
+                        st.markdown("**Insurance Tips:**")
                         for tip in tips[:3]:
                             st.info(tip)
                 else:
-                    st.info("👆 Click to search for insurance plans suited to your needs")
+                    st.info("Click to search for insurance plans suited to your needs")
                 
                 # Section 4: Cost Comparison
                 st.markdown("---")
-                st.markdown("### 💳 With vs Without Insurance")
+                st.markdown("### With vs Without Insurance")
                 
                 analyzer = PolicyImpactAnalyzer()
                 health_costs = analyzer.calculate_health_cost_impact(selected_city, 2024)
@@ -1087,20 +1428,20 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
                     col1, col2 = st.columns(2)
                     with col1:
                         st.error(f"""
-                        **❌ Without Insurance**  
-                        Annual out-of-pocket: ₹{per_capita * 1.5:.0f}  
-                        One hospitalization: ₹50,000+  
+                        **Without Insurance**  
+                        Annual out-of-pocket: Rs.{per_capita * 1.5:.0f}  
+                        One hospitalization: Rs.50,000+  
                         Risk of major expense: HIGH
                         """)
                     with col2:
                         st.success(f"""
-                        **✅ With Health Insurance**  
-                        Annual premium: ₹12,000-20,000  
+                        **With Health Insurance**  
+                        Annual premium: Rs.12,000-20,000  
                         Hospitalization: Covered  
                         Financial protection: SECURED
                         """)
             else:
-                st.warning("⚠️ Add GEMINI_API_KEY to .env for insurance recommendations")
+                st.warning("Add GEMINI_API_KEY to .env for insurance recommendations")
                 
         except ImportError:
             st.warning("Insurance planning agent not available.")
@@ -1108,49 +1449,236 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
             st.error(f"Error loading insurance planner: {str(e)}")
     
     with tab5:
-        st.subheader("🗺️ Multi-City Comparison")
+        st.subheader("City Comparison")
+        st.markdown(f"**Your Location:** {selected_city}")
         
-        # City selector for comparison
-        comparison_cities = st.multiselect(
-            "Select cities to compare:",
-            available_cities,
-            default=[selected_city, 'Mumbai', 'Bengaluru'] if len(available_cities) >= 3 else available_cities[:3]
+        # Comparison mode selection
+        compare_mode = st.radio(
+            "Comparison Type:",
+            ["Your City vs Others", "Multi-City Ranking", "Before & After (Time)"],
+            horizontal=True,
+            key="compare_mode"
         )
         
-        if len(comparison_cities) > 0:
-            # Get current AQI for each city
-            comparison_data = []
-            for city in comparison_cities:
-                city_latest = df[df['City'] == city].iloc[-1]
-                city_config = INDIAN_CITIES.get(city, {})
+        if compare_mode == "Your City vs Others":
+            st.markdown("### Compare your city with others")
+            
+            # Find nearby cities based on distance
+            def get_nearby_cities(city, all_cities, n=3):
+                """Get n closest cities to the given city"""
+                if city not in CITY_COORDINATES:
+                    return [c for c in all_cities if c != city][:n]
                 
-                comparison_data.append({
-                    'City': city,
-                    'Current AQI': city_latest['AQI'],
-                    'PM2.5': city_latest['PM2.5'],
-                    'Population': city_config.get('population', 0),
-                    'Tier': city_config.get('tier', 0)  # Use 0 for unknown cities
-                })
+                city_lat, city_lon = CITY_COORDINATES[city]
+                distances = []
+                
+                for other_city in all_cities:
+                    if other_city != city and other_city in CITY_COORDINATES:
+                        other_lat, other_lon = CITY_COORDINATES[other_city]
+                        # Simple distance calculation
+                        dist = ((city_lat - other_lat)**2 + (city_lon - other_lon)**2)**0.5
+                        distances.append((other_city, dist))
+                
+                distances.sort(key=lambda x: x[1])
+                return [c[0] for c in distances[:n]]
             
-            comparison_df = pd.DataFrame(comparison_data).sort_values('Current AQI', ascending=False)
+            nearby_cities = get_nearby_cities(selected_city, available_cities, 3)
             
-            # Bar chart
-            fig = px.bar(
-                comparison_df,
-                x='City',
-                y='Current AQI',
-                color='Current AQI',
-                color_continuous_scale='RdYlGn_r',
-                title="Current AQI Comparison"
+            # Select cities to compare
+            compare_cities = st.multiselect(
+                "Select cities to compare with:",
+                [c for c in available_cities if c != selected_city],
+                default=nearby_cities,
+                max_selections=5,
+                key="compare_cities",
+                help=f"Showing nearby cities to {selected_city} by default"
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            if compare_cities:
+                all_cities = [selected_city] + compare_cities
+                
+                # Fetch data for all cities
+                comparison_data = []
+                
+                with st.spinner("Fetching air quality data..."):
+                    for city in all_cities:
+                        realtime = get_realtime_aqi(city)
+                        
+                        if realtime and realtime.get('aqi'):
+                            aqi = realtime['aqi']
+                            pm25 = realtime.get('pm25', 'N/A')
+                            source = "Live"
+                        else:
+                            # Fallback to historical
+                            city_df = df[df['City'] == city]
+                            if not city_df.empty:
+                                latest = city_df.iloc[-1]
+                                aqi = latest['AQI']
+                                pm25 = f"{latest['PM2.5']:.1f}"
+                                source = "Historical"
+                            else:
+                                continue
+                        
+                        comparison_data.append({
+                            'City': city,
+                            'AQI': aqi,
+                            'PM2.5': pm25,
+                            'Source': source,
+                            'Is Current': city == selected_city
+                        })
+                
+                if comparison_data:
+                    # Sort by AQI (best to worst)
+                    comparison_data = sorted(comparison_data, key=lambda x: x['AQI'])
+                    
+                    # Visual comparison cards
+                    st.markdown("### Air Quality Comparison")
+                    
+                    cols = st.columns(len(comparison_data))
+                    
+                    for i, data in enumerate(comparison_data):
+                        with cols[i]:
+                            aqi = data['AQI']
+                            
+                            # Handle NaN values
+                            import math
+                            if math.isnan(aqi) if isinstance(aqi, float) else False:
+                                aqi = 0
+                            
+                            # Color based on AQI - Material palette
+                            if aqi <= 50:
+                                color = "#4caf50"
+                            elif aqi <= 100:
+                                color = "#8bc34a"
+                            elif aqi <= 200:
+                                color = "#ff9800"
+                            elif aqi <= 300:
+                                color = "#ff5722"
+                            else:
+                                color = "#f44336"
+                            
+                            highlight = "border: 2px solid #1976d2;" if data['Is Current'] else ""
+                            best_label = "BEST" if i == 0 else ""
+                            
+                            st.markdown(f"""
+                            <div class="city-card" style="{highlight}">
+                                <div class="city-label">
+                                    {'Your Location' if data['Is Current'] else 'City'} {best_label}
+                                </div>
+                                <div class="city-name">{data['City']}</div>
+                                <div class="city-aqi" style="color: {color};">{int(aqi)}</div>
+                                <div class="city-label">AQI</div>
+                                <div style="font-size: 12px; color: #757575; margin-top: 8px;">
+                                    PM2.5: {data['PM2.5']} µg/m³
+                                </div>
+                                <div style="font-size: 11px; color: #9e9e9e; margin-top: 4px;">
+                                    {data['Source']}
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    # Summary
+                    st.markdown("---")
+                    current_rank = next((i+1 for i, d in enumerate(comparison_data) if d['Is Current']), None)
+                    current_aqi = next((d['AQI'] for d in comparison_data if d['Is Current']), None)
+                    best_city = comparison_data[0]
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        if current_rank == 1:
+                            st.success(f"**{selected_city}** has the best air quality!")
+                        elif current_rank == len(comparison_data):
+                            st.error(f"**{selected_city}** has the worst air quality")
+                        else:
+                            st.info(f"**{selected_city}** ranks #{current_rank} of {len(comparison_data)}")
+                    
+                    with col2:
+                        st.metric("Best City", best_city['City'], f"AQI: {int(best_city['AQI'])}")
+                    
+                    with col3:
+                        if current_aqi and best_city['AQI']:
+                            diff = current_aqi - best_city['AQI']
+                            if diff > 0:
+                                st.warning(f"{int(diff)} points worse than {best_city['City']}")
+                            else:
+                                st.success("You're in the cleanest city!")
+            else:
+                st.info("Select cities above to compare")
+        
+        elif compare_mode == "Multi-City Ranking":
+            st.markdown("### All Cities Ranked by Air Quality")
             
-            # Data table
-            st.dataframe(comparison_df, use_container_width=True)
+            num_cities = st.slider("Number of cities:", 5, min(20, len(available_cities)), 10)
+            
+            ranking_data = []
+            for city in available_cities[:num_cities]:
+                city_df = df[df['City'] == city]
+                if not city_df.empty:
+                    latest = city_df.iloc[-1]
+                    ranking_data.append({
+                        'City': city,
+                        'AQI': latest['AQI'],
+                        'Is Current': city == selected_city
+                    })
+            
+            ranking_data = sorted(ranking_data, key=lambda x: x['AQI'])
+            
+            for i, data in enumerate(ranking_data):
+                rank_label = "1st" if i == 0 else "2nd" if i == 1 else "3rd" if i == 2 else f"{i+1}th"
+                your_loc = " (You)" if data['Is Current'] else ""
+                aqi = data['AQI']
+                aqi_color = "#4caf50" if aqi <= 100 else "#ff9800" if aqi <= 200 else "#f44336"
+                current_class = "rank-item current" if data['Is Current'] else "rank-item"
+                
+                st.markdown(f"""
+                <div class="{current_class}">
+                    <span><strong>{rank_label}</strong> {data['City']}<span style="color: #1976d2; font-weight: 500;">{your_loc}</span></span>
+                    <span style="color: {aqi_color}; font-weight: 500;">AQI {int(aqi)}</span>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        else:  # Time comparison
+            st.markdown(f"### {selected_city}: Air Quality Over Time")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                period1 = st.selectbox("Recent Period:", ["Last 7 days", "Last 30 days", "Last 90 days"])
+            with col2:
+                period2 = st.selectbox("Compare To:", ["Previous 7 days", "Previous 30 days", "Same period last year"])
+            
+            period_map = {"Last 7 days": 7, "Last 30 days": 30, "Last 90 days": 90}
+            days1 = period_map.get(period1, 7)
+            
+            recent_data = city_data.tail(days1)
+            recent_avg = recent_data['AQI'].mean()
+            
+            if period2 == "Same period last year":
+                older_data = city_data.tail(365 + days1).head(days1)
+            else:
+                prev_days = int(period2.split()[1])
+                older_data = city_data.tail(days1 + prev_days).head(prev_days)
+            
+            older_avg = older_data['AQI'].mean() if not older_data.empty else recent_avg
+            change = ((recent_avg - older_avg) / older_avg * 100) if older_avg > 0 else 0
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric(period1, f"{recent_avg:.0f} AQI")
+            with col2:
+                st.metric(period2, f"{older_avg:.0f} AQI")
+            with col3:
+                st.metric("Change", f"{change:+.1f}%", delta=f"{change:+.1f}%", delta_color="inverse")
+            
+            if change < -10:
+                st.success("Air quality has improved significantly!")
+            elif change > 10:
+                st.error("Air quality has worsened")
+            else:
+                st.info("Air quality is stable")
     
     with tab6:
-        st.subheader("🕵️‍♂️ Agentic Pollution Analysis")
+        st.subheader("AI Health Advisor")
         st.markdown("*Multi-Agent System: Scientist (Detective) & Doctor (Guardian)*")
         
         try:
