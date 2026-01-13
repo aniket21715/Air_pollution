@@ -1628,6 +1628,12 @@ Be specific to Indian context. Keep all values concise (under 50 chars each)."""
                 rank_label = "1st" if i == 0 else "2nd" if i == 1 else "3rd" if i == 2 else f"{i+1}th"
                 your_loc = " (You)" if data['Is Current'] else ""
                 aqi = data['AQI']
+                
+                # Handle NaN values
+                import math
+                if isinstance(aqi, float) and math.isnan(aqi):
+                    aqi = 0
+                
                 aqi_color = "#4caf50" if aqi <= 100 else "#ff9800" if aqi <= 200 else "#f44336"
                 current_class = "rank-item current" if data['Is Current'] else "rank-item"
                 
