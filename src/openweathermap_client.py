@@ -61,6 +61,24 @@ class OpenWeatherMapAQIClient:
         "Coimbatore": {"lat": 11.0168, "lon": 76.9558},
     }
     
+    # Weather condition icons mapping
+    WEATHER_ICONS = {
+        "Clear": "☀️",
+        "Clouds": "☁️",
+        "Rain": "🌧️",
+        "Drizzle": "🌦️",
+        "Thunderstorm": "⛈️",
+        "Snow": "❄️",
+        "Mist": "🌫️",
+        "Fog": "🌫️",
+        "Haze": "🌫️",
+        "Smoke": "💨",
+        "Dust": "💨",
+        "Sand": "💨",
+    }
+    
+    WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
+    
     def __init__(self, api_key):
         """
         Initialize OpenWeatherMap client.
@@ -68,6 +86,50 @@ class OpenWeatherMapAQIClient:
         api_key: Get free API key at https://openweathermap.org/api
         """
         self.api_key = api_key
+    
+    def get_current_weather(self, city_name):
+        """
+        Get real-time weather data for a city.
+        Returns temperature, conditions, humidity, wind speed.
+        """
+        coords = self.CITY_COORDS.get(city_name)
+        if not coords:
+            return None
+        
+        try:
+            params = {
+                "lat": coords['lat'],
+                "lon": coords['lon'],
+                "appid": self.api_key,
+                "units": "metric"  # Celsius
+            }
+            
+            response = requests.get(self.WEATHER_URL, params=params, timeout=10)
+            data = response.json()
+            
+            if response.status_code != 200:
+                return None
+            
+            main = data.get('main', {})
+            weather = data.get('weather', [{}])[0]
+            wind = data.get('wind', {})
+            
+            condition = weather.get('main', 'Clear')
+            
+            return {
+                "temperature": round(main.get('temp', 0)),
+                "feels_like": round(main.get('feels_like', 0)),
+                "humidity": main.get('humidity', 0),
+                "condition": condition,
+                "description": weather.get('description', '').title(),
+                "icon": self.WEATHER_ICONS.get(condition, "🌤️"),
+                "wind_speed": round(wind.get('speed', 0) * 3.6, 1),  # m/s to km/h
+                "wind_deg": wind.get('deg', 0),
+            }
+            
+        except Exception as e:
+            print(f"Weather error for {city_name}: {e}")
+            return None
     
     def get_current_aqi(self, city_name):
         """

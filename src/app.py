@@ -525,12 +525,25 @@ def main():
     # Try to get REAL-TIME data from Open-Meteo API
     realtime_data = get_realtime_aqi(selected_city)
     
+    # Also fetch weather data
+    weather_data = None
+    if OPENWEATHERMAP_AVAILABLE and OPENWEATHERMAP_API_KEY:
+        try:
+            from openweathermap_client import OpenWeatherMapAQIClient
+            weather_client = OpenWeatherMapAQIClient(OPENWEATHERMAP_API_KEY)
+            weather_data = weather_client.get_current_weather(selected_city)
+        except:
+            pass
+    
     if realtime_data and realtime_data.get('aqi'):
         # Use REAL-TIME API data
         current_aqi = realtime_data['aqi']
         category = realtime_data.get('category', 'Unknown')
         color = realtime_data.get('color', '#888888')
-        data_source = f"Live data ({realtime_data.get('timestamp', 'now')[:16]})"
+        # Show actual data source name
+        api_source = realtime_data.get('source', 'OpenWeatherMap')
+        timestamp = realtime_data.get('timestamp', 'now')[:16]
+        data_source = f"Live from {api_source} • {timestamp}"
         pm25_val = realtime_data.get('pm25', 'N/A')
         pm10_val = realtime_data.get('pm10', 'N/A')
         no2_val = realtime_data.get('no2', 'N/A')
@@ -544,28 +557,209 @@ def main():
         pm10_val = f"{latest_data['PM10']:.1f}"
         no2_val = f"{latest_data['NO2']:.1f}"
     
-    # Display AQI with Metrics in same box
+    # Weather defaults if not available
+    temp = weather_data.get('temperature', '--') if weather_data else '--'
+    feels_like = weather_data.get('feels_like', '--') if weather_data else '--'
+    humidity = weather_data.get('humidity', '--') if weather_data else '--'
+    condition = weather_data.get('description', 'Loading...') if weather_data else 'N/A'
+    weather_icon = weather_data.get('icon', '🌤️') if weather_data else '🌤️'
+    wind_speed = weather_data.get('wind_speed', '--') if weather_data else '--'
+    
+    # ===== AQI CARD (Simple, reliable HTML) =====
     st.markdown(f"""
-    <div class="aqi-display" style="background-color: {color}; color: white; padding: 24px;">
-        <div style="font-size: 48px; font-weight: bold; line-height: 1;">{int(current_aqi)}</div>
-        <div class="aqi-label" style="color: rgba(255,255,255,0.95); font-size: 24px; margin-bottom: 20px;">{category}</div>
-        
-        <div style="display: flex; justify-content: space-around; margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.2);">
-            <div style="text-align: center;">
-                <div style="font-size: 12px; color: rgba(255,255,255,0.8);">PM2.5</div>
-                <div style="font-size: 18px; font-weight: 500;">{pm25_val} <span style="font-size: 12px;">µg/m³</span></div>
-            </div>
-            <div style="text-align: center;">
-                <div style="font-size: 12px; color: rgba(255,255,255,0.8);">PM10</div>
-                <div style="font-size: 18px; font-weight: 500;">{pm10_val} <span style="font-size: 12px;">µg/m³</span></div>
-            </div>
-            <div style="text-align: center;">
-                <div style="font-size: 12px; color: rgba(255,255,255,0.8);">NO₂</div>
-                <div style="font-size: 18px; font-weight: 500;">{no2_val} <span style="font-size: 12px;">µg/m³</span></div>
+    <div style="background: linear-gradient(135deg, {color} 0%, {color}dd 100%); padding: 30px; border-radius: 16px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-bottom: 16px; color: white;">
+        <div style="font-size: 14px; opacity: 0.8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Air Quality Index</div>
+        <div style="font-size: 72px; font-weight: 700; line-height: 1; margin-bottom: 8px;">{int(current_aqi)}</div>
+        <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 20px; font-size: 18px; font-weight: 600;">{category}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ===== POLLUTANTS (Using Streamlit Native Metrics) =====
+    pm_col1, pm_col2, pm_col3 = st.columns(3)
+    with pm_col1:
+        st.metric(
+            label="PM2.5",
+            value=f"{pm25_val} µg/m³",
+            help="Fine particles (<2.5µm) - Enters lungs & blood. Main cause of respiratory issues."
+        )
+    with pm_col2:
+        st.metric(
+            label="PM10", 
+            value=f"{pm10_val} µg/m³",
+            help="Coarse particles (<10µm) - Dust, pollen, mold. Irritates airways."
+        )
+    with pm_col3:
+        st.metric(
+            label="NO₂",
+            value=f"{no2_val} µg/m³",
+            help="Nitrogen Dioxide - From vehicles & power plants. Causes breathing problems."
+        )
+    
+    # ===== WEATHER STRIP (Compact Horizontal) =====
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        padding: 16px 24px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+        color: white;
+    ">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 36px;">{weather_icon}</span>
+            <div>
+                <div style="font-size: 28px; font-weight: 700;">{temp}°C</div>
+                <div style="font-size: 12px; opacity: 0.8;">{condition}</div>
             </div>
         </div>
+        <div style="display: flex; gap: 24px; font-size: 13px;">
+            <div style="text-align: center;">
+                <div style="opacity: 0.7;">Feels</div>
+                <div style="font-weight: 600;">{feels_like}°C</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="opacity: 0.7;">Humidity</div>
+                <div style="font-weight: 600;">{humidity}%</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="opacity: 0.7;">Wind</div>
+                <div style="font-weight: 600;">{wind_speed} km/h</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Data source caption
+    st.caption(f"📡 {data_source}")
+    
+    # AQI Scale Reference - Shows what's normal
+    with st.expander("📊 AQI Scale Reference - What's Normal?", expanded=False):
+        st.markdown("""
+        <div style="display: flex; gap: 4px; margin: 10px 0;">
+            <div style="flex: 1; background: #4caf50; color: white; padding: 10px 5px; text-align: center; border-radius: 4px 0 0 4px;">
+                <div style="font-size: 11px;">Good</div>
+                <div style="font-weight: 600;">0-50</div>
+            </div>
+            <div style="flex: 1; background: #8bc34a; color: white; padding: 10px 5px; text-align: center;">
+                <div style="font-size: 11px;">Satisfactory</div>
+                <div style="font-weight: 600;">51-100</div>
+            </div>
+            <div style="flex: 1; background: #ff9800; color: white; padding: 10px 5px; text-align: center;">
+                <div style="font-size: 11px;">Moderate</div>
+                <div style="font-weight: 600;">101-200</div>
+            </div>
+            <div style="flex: 1; background: #ff5722; color: white; padding: 10px 5px; text-align: center;">
+                <div style="font-size: 11px;">Poor</div>
+                <div style="font-weight: 600;">201-300</div>
+            </div>
+            <div style="flex: 1; background: #9c27b0; color: white; padding: 10px 5px; text-align: center;">
+                <div style="font-size: 11px;">Very Poor</div>
+                <div style="font-weight: 600;">301-400</div>
+            </div>
+            <div style="flex: 1; background: #c62828; color: white; padding: 10px 5px; text-align: center; border-radius: 0 4px 4px 0;">
+                <div style="font-size: 11px;">Severe</div>
+                <div style="font-weight: 600;">400+</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        <div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 20px; text-align: center;">{data_source}</div>
+        st.markdown("""
+        | Level | AQI Range | PM2.5 (µg/m³) | PM10 (µg/m³) | Health Impact |
+        |-------|-----------|---------------|--------------|---------------|
+        | **Good** | 0-50 | 0-30 | 0-50 | ✅ No health risk |
+        | **Satisfactory** | 51-100 | 31-60 | 51-100 | Minor issues for sensitive people |
+        | **Moderate** | 101-200 | 61-90 | 101-250 | Breathing problems for some |
+        | **Poor** | 201-300 | 91-120 | 251-350 | ⚠️ Affects everyone |
+        | **Very Poor** | 301-400 | 121-250 | 351-430 | 🚨 Serious health effects |
+        | **Severe** | 400+ | 250+ | 430+ | ☠️ Emergency conditions |
+        
+        *Based on Indian National Air Quality Index (NAQI) by CPCB*
+        """)
+    
+    # ===== CREATIVE QUICK ACCESS NAVIGATION =====
+    st.markdown("""
+    <style>
+        .quick-nav {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 20px 0;
+            margin: 20px 0;
+        }
+        .nav-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 16px 20px;
+            min-width: 120px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        .nav-card:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+        .nav-card.forecast { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3); }
+        .nav-card.trends { background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%); box-shadow: 0 4px 15px rgba(238, 9, 121, 0.3); }
+        .nav-card.policy { background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%); box-shadow: 0 4px 15px rgba(142, 45, 226, 0.3); }
+        .nav-card.health { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3); }
+        .nav-card.compare { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3); }
+        .nav-card.ai { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); box-shadow: 0 4px 15px rgba(250, 112, 154, 0.3); }
+        .nav-icon { font-size: 28px; margin-bottom: 6px; }
+        .nav-label { color: white; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(102, 126, 234, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0); }
+        }
+        .nav-hint {
+            text-align: center;
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 10px;
+            animation: fadeIn 1s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+    
+    <div class="nav-hint">
+        ⚡ Quick Access — scroll down to explore
+    </div>
+    
+    <div class="quick-nav">
+        <div class="nav-card forecast">
+            <div class="nav-icon">🌤️</div>
+            <div class="nav-label">7-Day<br>Forecast</div>
+        </div>
+        <div class="nav-card trends">
+            <div class="nav-icon">📈</div>
+            <div class="nav-label">Historical<br>Trends</div>
+        </div>
+        <div class="nav-card policy">
+            <div class="nav-icon">🏛️</div>
+            <div class="nav-label">Policy<br>Impact</div>
+        </div>
+        <div class="nav-card health">
+            <div class="nav-icon">❤️</div>
+            <div class="nav-label">Health<br>Planning</div>
+        </div>
+        <div class="nav-card compare">
+            <div class="nav-icon">🏙️</div>
+            <div class="nav-label">Compare<br>Cities</div>
+        </div>
+        <div class="nav-card ai">
+            <div class="nav-icon">🤖</div>
+            <div class="nav-label">AI<br>Advisor</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
