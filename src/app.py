@@ -525,13 +525,24 @@ def main():
     # Try to get REAL-TIME data from Open-Meteo API
     realtime_data = get_realtime_aqi(selected_city)
     
-    # Also fetch weather data
+    # Fetch weather data - try OpenWeatherMap first, fallback to Open-Meteo
     weather_data = None
+    
+    # Try OpenWeatherMap first (if API key available)
     if OPENWEATHERMAP_AVAILABLE and OPENWEATHERMAP_API_KEY:
         try:
             from openweathermap_client import OpenWeatherMapAQIClient
             weather_client = OpenWeatherMapAQIClient(OPENWEATHERMAP_API_KEY)
             weather_data = weather_client.get_current_weather(selected_city)
+        except:
+            pass
+    
+    # Fallback to Open-Meteo (FREE, no API key needed)
+    if not weather_data and OPENMETEO_AVAILABLE:
+        try:
+            from openmeteo_client import OpenMeteoAQIClient
+            openmeteo_client = OpenMeteoAQIClient()
+            weather_data = openmeteo_client.get_current_weather(selected_city)
         except:
             pass
     

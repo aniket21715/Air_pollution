@@ -97,6 +97,74 @@ class OpenMeteoAQIClient:
             print(f"Error fetching {city_name}: {e}")
             return None
     
+    # Weather condition codes mapping
+    WEATHER_CODES = {
+        0: {"condition": "Clear", "icon": "☀️", "description": "Clear sky"},
+        1: {"condition": "Clear", "icon": "🌤️", "description": "Mainly clear"},
+        2: {"condition": "Clouds", "icon": "⛅", "description": "Partly cloudy"},
+        3: {"condition": "Clouds", "icon": "☁️", "description": "Overcast"},
+        45: {"condition": "Fog", "icon": "🌫️", "description": "Fog"},
+        48: {"condition": "Fog", "icon": "🌫️", "description": "Depositing rime fog"},
+        51: {"condition": "Drizzle", "icon": "🌦️", "description": "Light drizzle"},
+        53: {"condition": "Drizzle", "icon": "🌦️", "description": "Moderate drizzle"},
+        55: {"condition": "Drizzle", "icon": "🌧️", "description": "Dense drizzle"},
+        61: {"condition": "Rain", "icon": "🌧️", "description": "Slight rain"},
+        63: {"condition": "Rain", "icon": "🌧️", "description": "Moderate rain"},
+        65: {"condition": "Rain", "icon": "🌧️", "description": "Heavy rain"},
+        71: {"condition": "Snow", "icon": "❄️", "description": "Slight snow"},
+        73: {"condition": "Snow", "icon": "❄️", "description": "Moderate snow"},
+        75: {"condition": "Snow", "icon": "❄️", "description": "Heavy snow"},
+        80: {"condition": "Rain", "icon": "🌧️", "description": "Rain showers"},
+        81: {"condition": "Rain", "icon": "🌧️", "description": "Moderate showers"},
+        82: {"condition": "Rain", "icon": "⛈️", "description": "Violent showers"},
+        95: {"condition": "Thunderstorm", "icon": "⛈️", "description": "Thunderstorm"},
+        96: {"condition": "Thunderstorm", "icon": "⛈️", "description": "Thunderstorm with hail"},
+        99: {"condition": "Thunderstorm", "icon": "⛈️", "description": "Thunderstorm with heavy hail"},
+    }
+    
+    def get_current_weather(self, city_name):
+        """
+        Get real-time weather data using Open-Meteo API (FREE, no API key).
+        Returns temperature, humidity, wind speed, and conditions.
+        """
+        city_data = INDIAN_CITIES.get(city_name)
+        if not city_data or 'coords' not in city_data:
+            return None
+        
+        coords = city_data['coords']
+        
+        try:
+            # Open-Meteo Weather API (free)
+            weather_url = "https://api.open-meteo.com/v1/forecast"
+            params = {
+                "latitude": coords['lat'],
+                "longitude": coords['lon'],
+                "current": "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m",
+                "timezone": "Asia/Kolkata"
+            }
+            
+            response = requests.get(weather_url, params=params, timeout=10)
+            data = response.json()
+            
+            curr = data.get('current', {})
+            weather_code = curr.get('weather_code', 0)
+            weather_info = self.WEATHER_CODES.get(weather_code, {"condition": "Clear", "icon": "🌤️", "description": "Clear"})
+            
+            return {
+                "temperature": round(curr.get('temperature_2m', 0)),
+                "feels_like": round(curr.get('apparent_temperature', 0)),
+                "humidity": curr.get('relative_humidity_2m', 0),
+                "condition": weather_info['condition'],
+                "description": weather_info['description'],
+                "icon": weather_info['icon'],
+                "wind_speed": round(curr.get('wind_speed_10m', 0), 1),
+                "source": "Open-Meteo"
+            }
+            
+        except Exception as e:
+            print(f"Weather error for {city_name}: {e}")
+            return None
+    
     def get_all_cities(self):
         """Fetch current AQI for all configured Indian cities."""
         results = []
